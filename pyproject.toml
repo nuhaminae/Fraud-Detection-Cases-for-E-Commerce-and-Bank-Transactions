@@ -6,11 +6,7 @@ skip-string-normalization = false
 
 [tool.isort]
 profile = "black"
-skip = [".fraudvenv", "venv", "env"]
-
-[tool.flake8]
-max-line-length = 88
-ignore = ["E203", "W503"]
+skip = [".fraudvenv"]
 
 [build-system]
 requires = ["setuptools", "wheel"]
