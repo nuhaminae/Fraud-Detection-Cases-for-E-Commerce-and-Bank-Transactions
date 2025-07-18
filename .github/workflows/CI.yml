@@ -41,11 +41,11 @@ jobs:
       - name: Confirm Python version
         run: .\.fraudvenv\Scripts\python.exe --version
       
-      - name: Run Black, isort and flake8 formatting check
+      - name: Style and Lint Validation (Black, isort, Flake8)
         run: | 
-          .\.fraudvenv\Scripts\black .
-          .\.fraudvenv\Scripts\isort .
-          .\.fraudvenv\Scripts\python.exe -m flake8 . --exit-zero
+          .\.fraudvenv\Scripts\black .  --exclude=.fraudvenv --check --diff
+          .\.fraudvenv\Scripts\isort .  --exclude=.fraudvenv --check --diff
+          .\.fraudvenv\Scripts\python.exe -m flake8.  --exclude=.fraudvenv --check --diff
       
       - name: Run pytest
         run: .\.fraudvenv\Scripts\python.exe -m pytest tests --tb=short --maxfail=1 --disable-warnings -q || echo "::error::Tests failed"
