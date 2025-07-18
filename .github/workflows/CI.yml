@@ -44,7 +44,7 @@ jobs:
       - name: Style and Lint Validation (Black, isort, Flake8)
         run: | 
           .\.fraudvenv\Scripts\black .  --exclude=.fraudvenv --check --diff
-          .\.fraudvenv\Scripts\isort .  --exclude=.fraudvenv --check --diff
+          .\.fraudvenv\Scripts\isort . --skip .fraudvenv --check --diff
           .\.fraudvenv\Scripts\python.exe -m flake8.  --exclude=.fraudvenv --check --diff
       
       - name: Run pytest
