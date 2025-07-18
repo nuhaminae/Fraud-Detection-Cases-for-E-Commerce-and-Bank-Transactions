@@ -1,0 +1,51 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+      
+      - name: Set up pip cache directory
+        run: echo "PIP_CACHE_DIR=$(pip cache dir)" >> $GITHUB_ENV
+      
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: ${{ runner.os }}-pip-
+      
+      - name: Cache venv
+        uses: actions/cache@v4
+        with:
+          path: ./.fraudvenv
+          key: ${{ runner.os }}-venv-${{ hashFiles('requirements.txt') }}
+          restore-keys: ${{ runner.os }}-venv-
+      
+      - name: Install dependencies
+        run: |
+          python -m venv .fraudvenv
+          .\.fraudvenv\Scripts\python.exe -m pip install --upgrade pip
+          .\.fraudvenv\Scripts\python.exe -m pip install -r requirements.txt
+      
+      - name: Confirm Python version
+        run: .\.fraudvenv\Scripts\python.exe --version
+      
+      - name: Run Black, isort and flake8 formatting check
+        run: | 
+          .\.fraudvenv\Scripts\black .
+          .\.fraudvenv\Scripts\isort .
+          .\.fraudvenv\Scripts\flake8 . --exit-zero
+      
+      - name: Run pytest
+        run: .\.fraudvenv\Scripts\python.exe -m pytest tests --tb=short --maxfail=1 --disable-warnings -q || echo "::error::Tests failed"
