@@ -45,7 +45,7 @@ jobs:
         run: | 
           .\.fraudvenv\Scripts\black .
           .\.fraudvenv\Scripts\isort .
-          .\.fraudvenv\Scripts\flake8 . --exit-zero
+          .\.fraudvenv\Scripts\python.exe -m flake8 . --exit-zero
       
       - name: Run pytest
         run: .\.fraudvenv\Scripts\python.exe -m pytest tests --tb=short --maxfail=1 --disable-warnings -q || echo "::error::Tests failed"
