@@ -29,6 +29,7 @@ repos:
         args: ["--line-length=88"]
       - id: nbqa-isort
       - id: nbqa-flake8
-
+        language_version: python3.12
+        
 default_language_version:
   python: "3.12"
