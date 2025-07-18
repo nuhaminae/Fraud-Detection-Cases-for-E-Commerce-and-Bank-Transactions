@@ -1,13 +1,14 @@
 # pyproject/toml
 [tool.black]
 line-length = 88
-target-version = ["py311"]
+target-version = ["py312"]
 skip-string-normalization = false
+
 
 [tool.isort]
 profile = "black"
 skip = [".fraudvenv"]
 
-[build-system]
-requires = ["setuptools", "wheel"]
-build-backend = "setuptools.build_meta"
+
+[tool.nbqa]
+exclude = [".fraudvenv"]
