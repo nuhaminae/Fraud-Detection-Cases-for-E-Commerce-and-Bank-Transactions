@@ -1,0 +1,17 @@
+# pyproject/toml
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+skip-string-normalization = false
+
+[tool.isort]
+profile = "black"
+skip = [".fraudvenv", "venv", "env"]
+
+[tool.flake8]
+max-line-length = 88
+ignore = ["E203", "W503"]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
