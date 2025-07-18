@@ -5,46 +5,52 @@ on: [push, pull_request]
 jobs:
   build:
     runs-on: windows-latest
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.12"
-          
-      - name: Remove cached venv (optional cleanup)
-        run: |
-          if (Test-Path ".fraudvenv") {
-            Remove-Item -Recurse -Force ".fraudvenv"
-          }
-      
+
       - name: Set up pip cache directory
         run: echo "PIP_CACHE_DIR=$(pip cache dir)" >> $GITHUB_ENV
-      
-      - name: Cache pip packages
+
+      - name: Cache virtualenv
+        id: venv-cache
         uses: actions/cache@v4
         with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
-          restore-keys: ${{ runner.os }}-pip-
-      
-      - name: Install dependencies
+          path: .fraudvenv
+          key: ${{ runner.os }}-venv-${{ hashFiles('requirements.txt') }}
+          restore-keys: ${{ runner.os }}-venv-
+
+      - name: Create and install dependencies if cache miss
+        if: steps.venv-cache.outputs.cache-hit != 'true'
         run: |
           python -m venv .fraudvenv
           .\.fraudvenv\Scripts\python.exe -m pip install --upgrade pip
           .\.fraudvenv\Scripts\python.exe -m pip install -r requirements.txt
-      
+
       - name: Confirm Python version
         run: .\.fraudvenv\Scripts\python.exe --version
-      
+
       - name: Style and Lint Validation (Black, isort, Flake8)
-        run: | 
-          .\.fraudvenv\Scripts\black .  --exclude=.fraudvenv --check --diff
+        run: |
+          .\.fraudvenv\Scripts\black . --exclude=.fraudvenv --check --diff
           .\.fraudvenv\Scripts\isort . --skip .fraudvenv --check --diff
           .\.fraudvenv\Scripts\python.exe -m flake8 . --exclude=.fraudvenv --exit-zero
-      
+
+      - name: nbQA Notebook Quality Checks
+        run: |
+          if (Get-ChildItem -Recurse -Filter *.ipynb) {
+            .\.fraudvenv\Scripts\python.exe -m nbqa black . --line-length=88 --exclude .fraudvenv
+            .\.fraudvenv\Scripts\python.exe -m nbqa isort . --skip .fraudvenv
+            .\.fraudvenv\Scripts\python.exe -m nbqa flake8 . --exclude .fraudvenv --exit-zero
+          } else {
+            echo "::notice::Skipping nbQA checks — no notebooks found in repo."
+          }
+            
       - name: Run pytest
         run: .\.fraudvenv\Scripts\python.exe -m pytest tests --tb=short --maxfail=1 --disable-warnings -q || echo "::error::Tests failed"
