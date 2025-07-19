@@ -36,17 +36,18 @@
 fraud_detection_project/
 ├── data/
 │   ├── raw/                           # Original datasets (e.g., Fraud_Data.csv, creditcard.csv)
-│   ├── processed/                     # Cleaned and transformed datasets
+│   └── processed/                     # Cleaned and transformed datasets
 ├── notebooks/
 │   ├── 01_eda.ipynb                   # Exploratory Data Analysis
 │   ├── 02_feature_engineering.ipynb
 │   ├── 03_modeling.ipynb
 │   └── 04_model_explainability.ipynb
 ├── scripts/                           # Core scripts
-│   ├── data_preprocessing.py
-│   ├── feature_engineering.py
-│   ├── train_model.py
-│   └── explain_model.py
+│   ├── _01_data_preprocessing.py
+│   ├── _02_feature_engineering.py
+│   ├── _03_train_model.py
+│   └── _04_explain_model.py
+├── tests/  
 ├── insights/                          # Plots and charts for reporting
 ├── requirements.txt                   # Pip install fallback
 ├── README.md                          # Project overview and setup instructions
