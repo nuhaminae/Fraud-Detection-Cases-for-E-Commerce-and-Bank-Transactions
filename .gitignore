@@ -1,20 +1,25 @@
 # Python bytecode and caches
 __pycache__/
-*.py[cod]
-*.pyo
-*.pyd
+.pytest_cache/
 
 # Virtual environments
 .fraudvenv/
 
+# DVC
+/.dvc/tmp
+/.dvc/cache
+
 # VS Code workspace and extensions
 .vscode/
 
-# logs
+# CSV files
+*.csv
+
+# Logs
 *.log
 logs/
 
-# build leftovers
+# Build leftovers
 *.tmp
 
 # Caches
