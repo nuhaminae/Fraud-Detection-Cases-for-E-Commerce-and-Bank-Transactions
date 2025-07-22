@@ -8,6 +8,15 @@ from IPython.display import display
 
 
 class EDA:
+    """
+    A class to perform Exploratory Data Analysis (EDA) on credit card fraud data.
+
+    This class provides methods for loading, cleaning, and visualising data from
+    three different sources: credit card info, fraud data, and IP address mapping.
+    It includes functionalities for handling missing values, removing duplicates,
+    performing univariate and bivariate analysis, and handling outliers.
+    """
+
     def __init__(
         self,
         credit_path,
@@ -25,7 +34,11 @@ class EDA:
             fraud_path (str): The path to the fraud data DataFrame file in CSV format.
             ip_path (str): The path to the IP address DataFrame file in CSV format.
             plot_dir (str, optional): The directory to save plots.
+                                        Defaults to None.
             processed_dir (str, optional): The directory to save processed DataFrames.
+                                            Defaults to None.
+            verbose (bool, optional): Whether to display detailed info during loading.
+                                        Defaults to True.
         """
         self.credit_path = credit_path
         self.fraud_path = fraud_path
@@ -48,6 +61,17 @@ class EDA:
 
     @staticmethod
     def safe_relpath(path, start=os.getcwd()):
+        """
+        Return a relative path, handling cases where paths are on different drives.
+
+        Args:
+            path (str): The path to make relative.
+            start (str, optional): The starting directory.
+                                    Defaults to current working directory.
+
+        Returns:
+            str: The relative path if possible, otherwise the original path.
+        """
         try:
             return os.path.relpath(path, start)
         except ValueError:
@@ -55,7 +79,15 @@ class EDA:
 
     def load_single_df(self, path, label):
         """
-        Load single DataFrame
+        Load a single DataFrame from a given path and label.
+
+        Args:
+            path (str): The path to the CSV file.
+            label (str): A label for the DataFrame (e.g., "CreditCard").
+
+        Returns:
+            pd.DataFrame: The loaded DataFrame with capitalised columns,
+                            or None if loading fails.
         """
         rel_path = self.safe_relpath(path)
         try:
@@ -71,13 +103,24 @@ class EDA:
 
     def load_df(self):
         """
-        Load multiple DataFrames
+        Load multiple DataFrames from the specified paths.
+
+        This method calls `load_single_df` for credit card data, fraud data,
+        and IP address mapping data, storing them in `credit_raw`, `fraud_raw`,
+        and `ip_raw` attributes respectively.
         """
         self.credit_raw = self.load_single_df(self.credit_path, "CreditCard")
         self.fraud_raw = self.load_single_df(self.fraud_path, "FraudData")
         self.ip_raw = self.load_single_df(self.ip_path, "IPAddressMap")
 
     def display_info(self, df, label):
+        """
+        Display head, shape, columns, and info for a given DataFrame.
+
+        Args:
+            df (pd.DataFrame): The DataFrame to display information for.
+            label (str): A label for the DataFrame.
+        """
         if not self.verbose:  # Fallback if display is not present
             return
         print(f"{label} Head:")
@@ -92,7 +135,15 @@ class EDA:
     @staticmethod
     def data_cleaning_single(df, label):
         """
-        Remove duplicates and correct data types.
+        Remove duplicates and correct data types for a single DataFrame.
+
+        Args:
+            df (pd.DataFrame): The input DataFrame.
+            label (str): A label for the DataFrame.
+
+        Returns:
+            pd.DataFrame: The cleaned DataFrame, or None if the input DataFrame is None.
+
         """
         if df is None:
             print(f"DataFrame {label} not loaded. Please check initialisation.")
@@ -182,6 +233,13 @@ class EDA:
         return df
 
     def data_cleaning(self):
+        """
+        Perform data cleaning on all loaded DataFrames.
+
+        This method applies `data_cleaning_single` to the credit card, fraud,
+        and IP address mapping DataFrames, storing the cleaned results in
+        `credit`, `fraud`, and `ip` attributes respectively.
+        """
         self.credit = self.data_cleaning_single(self.credit_raw, "CreditCard")
         self.fraud = self.data_cleaning_single(self.fraud_raw, "FraudData")
         self.ip = self.data_cleaning_single(self.ip_raw, "IPAddress Map")
@@ -191,7 +249,19 @@ class EDA:
     @staticmethod
     def missing_values_single(df, label):
         """
-        Evaluate missing values column-wise and decide whether to impute or drop.
+        Handle missing values for a single DataFrame.
+
+        This method drops columns with all-zero IP values, reports missing values,
+        drops columns with more than 30% missing values, imputes missing numeric
+        values with the median, and drops rows with missing object-type values.
+
+        Args:
+            df (pd.DataFrame): The input DataFrame.
+            label (str): A label for the DataFrame.
+
+        Returns:
+            pd.DataFrame: The DataFrame with missing values handled,
+                            or None if the input DataFrame is None.
         """
         if df is None:
             print(f"DataFrame {label} not loaded. Please check initialisation.")
@@ -240,7 +310,11 @@ class EDA:
 
     def missing_values(self):
         """
-        Handle missing values for multiple DataFrames
+        Handle missing values for multiple DataFrames.
+
+        This method applies `missing_values_single` to the credit card, fraud,
+        and IP address mapping DataFrames, updating the `credit`, `fraud`,
+        and `ip` attributes.
         """
         self.credit = self.missing_values_single(self.credit, "CreditCard")
         self.fraud = self.missing_values_single(self.fraud, "FraudData")
@@ -249,7 +323,18 @@ class EDA:
     # ------------Univariate EDA------------#
     def univariate_single(self, df, label):
         """
-        Apply univariate EDA.
+        Perform univariate EDA on a single DataFrame.
+
+        This method visualises the distribution of numeric columns using histograms
+        and calculates skewness and kurtosis. It also visualises the frequency
+        of categorical columns using countplots, including the top 20 countries.
+
+        Args:
+            df (pd.DataFrame): The input DataFrame.
+            label (str): A label for the DataFrame.
+
+        Returns:
+            None. Plots are displayed and saved to the specified plot directory.
         """
         if df is None:
             print(f"DataFrame {label} not loaded. Please check initialisation.")
@@ -353,6 +438,12 @@ class EDA:
         print("\n" + "*==*" * 30 + "\n")
 
     def univariate(self):
+        """
+        Perform univariate EDA on all loaded DataFrames.
+
+        This method applies `univariate_single` to the credit card, fraud,
+        and IP address mapping DataFrames.
+        """
         self.univariate_single(self.credit, "CreditCard")
         self.univariate_single(self.fraud, "FraudData")
         self.univariate_single(self.ip, "IPAddress Map")
@@ -361,7 +452,20 @@ class EDA:
 
     def bivariate_single(self, df, label):
         """
-        Apply Bivariate EDA.
+        Perform bivariate EDA on a single DataFrame.
+
+        This method visualises the relationship between numeric features and the
+        target variable ('Class') using boxplots. It also visualises the relationship
+        between categorical features and the target variable using countplots
+        (showing the top 10 levels for each categorical feature). Finally, it
+        generates a correlation heatmap for numeric features.
+
+        Args:
+            df (pd.DataFrame): The input DataFrame.
+            label (str): A label for the DataFrame.
+
+        Returns:
+            None. Plots are displayed and saved to the specified plot directory.
         """
         if df is None:
             print(f"DataFrame {label} not loaded. Please check initialisation.")
@@ -465,6 +569,12 @@ class EDA:
         print("\n" + "*==*" * 30 + "\n")
 
     def bivariate(self):
+        """
+        Perform bivariate EDA on all loaded DataFrames.
+
+        This method applies `bivariate_single` to the credit card, fraud,
+        and IP address mapping DataFrames.
+        """
         self.bivariate_single(self.credit, "CreditCard")
         self.bivariate_single(self.fraud, "FraudData")
         self.bivariate_single(self.ip, "IPAddress Map")
@@ -473,15 +583,24 @@ class EDA:
     def batch_impute_outliers(self, df, label, eligible_cols=None, threshold=3):
         """
         Class-aware batch imputation using IQR and Z-score.
-        Handles outliers separately for Class 0 and Class 1.
+
+        Handles outliers separately for Class 0 and Class 1. Outliers are detected
+        using a combination of the Interquartile Range (IQR) and Z-score methods,
+        and imputed with the median value specific to their class.
+
         Args:
             df (pd.DataFrame): The input DataFrame.
+            label (str): A label for the DataFrame.
             eligible_cols (list, optional): List of columns to apply imputation.
-                                            If None, detects based on data type.
-            threshold (float): Z-score threshold for outlier detection.(95%)
+                                            If None, detects based on data type
+                                            (numeric columns excluding IDs and 'Class').
+                                            Defaults to None.
+            threshold (float): Z-score threshold for outlier detection
+                                (e.g., 3 for 95% confidence). Defaults to 3.
 
         Returns:
-            pd.DataFrame: The DataFrame with imputed values.
+            pd.DataFrame: The DataFrame with imputed values. The processed DataFrame
+                            issaved to a CSV file in the specified processed directory.
         """
 
         df = df.copy()
@@ -550,6 +669,12 @@ class EDA:
         return df
 
     def impute_outliers_iqr_zscore(self):
+        """
+        Handle outliers for all loaded DataFrames using class-aware imputation.
+
+        This method applies `batch_impute_outliers` to the credit card, fraud,
+        and IP address mapping DataFrames.
+        """
         self.batch_impute_outliers(self.credit, "CreditCard")
         self.batch_impute_outliers(self.fraud, "FraudData")
         self.batch_impute_outliers(self.ip, "IPAddressMap")
@@ -557,6 +682,16 @@ class EDA:
     # ------------Convert IP adress to Integer and Merge Datasets------------#
     @staticmethod
     def map_ip_to_country(df, ip_values):
+        """
+        Map an IP address to a country based on IP range data.
+
+        Args:
+            df (pd.DataFrame): The DataFrame containing IP address ranges and countries.
+            ip_values (int): The IP address value to map.
+
+        Returns:
+            str: The corresponding country if a match is found, otherwise "Unknown".
+        """
         match = df[
             (df["Lower_Bound_Ip_Address"] <= ip_values)
             & (df["Upper_Bound_Ip_Address"] >= ip_values)
@@ -564,6 +699,17 @@ class EDA:
         return match["Country"].values[0] if not match.empty else "Unknown"
 
     def apply_map_ip_to_country(self):
+        """
+        Map IP addresses in the fraud data to countries and merge with IP address data.
+
+        This method creates a new DataFrame `fraud_by_country` by copying the fraud
+        data and adding a 'Country' column based on mapping the 'Ip_Address' using
+        the IP address mapping DataFrame. It reports any IP addresses that could not
+        be mapped and saves the merged DataFrame to a CSV file.
+
+        Returns:
+            None. The merged DataFrame is saved to a file.
+        """
         self.fraud_by_country = self.fraud.copy()
         # Apply country mapping
         self.fraud_by_country["Country"] = self.fraud_by_country["Ip_Address"].apply(
