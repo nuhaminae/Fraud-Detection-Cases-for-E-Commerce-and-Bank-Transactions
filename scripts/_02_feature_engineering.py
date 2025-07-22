@@ -1,7 +1,9 @@
 # _01_data_preprocessing.py
 import os
 
+import matplotlib.pyplot as plt
 import pandas as pd
+import seaborn as sns
 from imblearn.over_sampling import SMOTE
 from IPython.display import display
 from sklearn.model_selection import train_test_split
@@ -17,23 +19,24 @@ class FeatureEngineering:
     transformation steps like one-hot encoding, scaling, and handling class imbalance.
     """
 
-    def __init__(
-        self,
-        fraud_path,
-        processed_dir,
-    ):
+    def __init__(self, fraud_path, processed_dir, plot_dir=None):
         """
         Initiate FeatureEngineering class from DataFrame path.
 
         Args:
             fraud_path (str): The path to the raw fraud data DataFrame file (CSV).
             processed_dir (str, optional): The directory to save processed DataFrames.
+            plot_dir (str, optional): The directory to save plots.
+                                    Defaults to None.
         """
         self.fraud_path = fraud_path
         self.processed_dir = processed_dir
+        self.plot_dir = plot_dir
         self.df = None
 
         # Create output directory if it does not exist
+        if not os.path.exists(self.plot_dir):
+            os.makedirs(self.plot_dir)
         if not os.path.exists(self.processed_dir):
             os.makedirs(self.processed_dir)
 
@@ -134,6 +137,9 @@ class FeatureEngineering:
             pd.DataFrame: The DataFrame with added frequency, velocity,
                 and time-based features.
         """
+
+        rel_plot_path = self.safe_relpath(self.plot_dir)
+
         # Transaction count per device
         freq_by_user = (
             self.df.groupby("User_Id")["Purchase_Time"]
@@ -148,7 +154,6 @@ class FeatureEngineering:
         self.df = self.df.join(freq_by_user, on="User_Id").join(
             freq_by_device, on="Device_Id"
         )
-
         # Time since last transaction per user
         self.df.sort_values(["User_Id", "Purchase_Time"], inplace=True)
         self.df["Time_Since_Last"] = (
@@ -159,13 +164,81 @@ class FeatureEngineering:
         self.df["Velocity"] = self.df["Purchase_Value"] / self.df[
             "Time_Since_Last"
         ].replace(0, pd.NA)
+        # Visualise Transaction Velocity Distribution
+        plt.figure(figsize=(10, 5))
+        sns.histplot(
+            data=self.df[self.df["Velocity"].notna()],
+            x="Velocity",
+            hue="Class",
+            bins=50,
+            kde=True,
+            palette="Set1",
+        )
+        plt.title("Transaction Velocity by Class")
+        plt.ylabel("Mean Fraud Rate")
+        plt.grid()
+        plt.tight_layout()
+
+        if self.plot_dir:
+            plot_path = os.path.join(self.plot_dir, "velocity_hist.png")
+            plt.savefig(plot_path)
+            print(f"Plot saved to {rel_plot_path}")
+
+        # show and close plot
+        plt.show()
+        plt.close()
 
         # Time-based features
         # Hour of day
         self.df["Hour_Of_Day"] = self.df["Purchase_Time"].dt.hour
+        # Visualise Fraud Rate by Hour of Day
+        plt.figure(figsize=(10, 5))
+        sns.barplot(
+            data=self.df.groupby("Hour_Of_Day")["Class"].mean().reset_index(),
+            x="Hour_Of_Day",
+            y="Class",
+            hue="Hour_Of_Day",
+            palette="Set1",
+        )
+        plt.title("Fraud Rate by Hour of Day")
+        plt.ylabel("Mean Fraud Rate")
+        plt.grid()
+        plt.tight_layout()
+        plt.legend().set_visible(False)
+
+        if self.plot_dir:
+            plot_path = os.path.join(self.plot_dir, "hour_day_bar.png")
+            plt.savefig(plot_path)
+            print(f"Plot saved to {rel_plot_path}")
+
+        # show and close plot
+        plt.show()
+        plt.close()
 
         # Day of week
         self.df["Day_Of_Week"] = self.df["Purchase_Time"].dt.dayofweek
+        # VisualiseFraud Rate by Day of Week
+        sns.barplot(
+            data=self.df.groupby("Day_Of_Week")["Class"].mean().reset_index(),
+            x="Day_Of_Week",
+            y="Class",
+            hue="Day_Of_Week",
+            palette="Set1",
+        )
+        plt.title("Fraud Rate by Day of Week")
+        plt.ylabel("Mean Fraud Rate")
+        plt.grid()
+        plt.tight_layout()
+        plt.legend().set_visible(False)
+
+        if self.plot_dir:
+            plot_path = os.path.join(self.plot_dir, "day_week_bar.png")
+            plt.savefig(plot_path)
+            print(f"Plot saved to {rel_plot_path}")
+
+        # show and close plot
+        plt.show()
+        plt.close()
 
         # Time since signup
         self.df["Time_Since_Signup"] = (
@@ -229,7 +302,7 @@ class FeatureEngineering:
 
         print(
             f"Shape before SMOTE: {X_train.shape}, \
-            Shape after SMOTE: {X_train_resampled.shape}"
+                after SMOTE: {X_train_resampled.shape}"
         )
         print(f"Resampled Fraud Ratio: {y_train_resampled.mean():.2%}")
 
@@ -256,8 +329,27 @@ class FeatureEngineering:
         merged_df.to_csv(save_path, index=False)
         print(
             f"Resampled and scaled training data \
-            'Train_Resampled_Scaled'saved to {self.safe_relpath(save_path)}"
+                'Train_Resampled_Scaled'saved to {self.safe_relpath(save_path)}."
         )
+
+        # Class Distribution Bar Plot After Class Balancing
+        if "Class" in merged_df.columns:
+            print("Class Distribution Bar Plot After Class Balancing...\n")
+            plt.figure(figsize=(10, 5))
+            sns.countplot(data=merged_df, x="Class", hue="Class", palette="Set1")
+            plt.title("Class Distribution after SMOTE")
+            plt.xlabel("Class (0 = Legitimate, 1 = Fraud)")
+            plt.ylabel("Transaction Count")
+            plt.grid()
+            plt.tight_layout()
+
+            if self.plot_dir:
+                plot_path = os.path.join(self.plot_dir, "new_class_count.png")
+                plt.savefig(plot_path)
+                print(f"Plot saved to {self.safe_relpath(plot_path)}")
+
+            plt.show()
+            plt.close()
 
         pd.DataFrame(X_test_scaled, columns=numeric_cols).to_csv(
             "X_test_scaled.csv", index=False
