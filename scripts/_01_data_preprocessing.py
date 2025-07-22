@@ -169,14 +169,9 @@ class EDA:
                     "Lower_Bound_Ip_Address",
                     "Upper_Bound_Ip_Address",
                 ]:
-                    if col in [
-                        "Ip_Address",
-                        "Lower_Bound_Ip_Address",
-                        "Upper_Bound_Ip_Address",
-                    ]:
-                        df[col] = pd.to_numeric(df[col], errors="coerce")
-                        # Round to get clean integers before casting
-                        df[col] = df[col].round().astype("int64")
+                    df[col] = pd.to_numeric(df[col], errors="coerce")
+                    # Round to get clean integers before casting
+                    df[col] = df[col].round().astype("int64")
                 else:
                     df[col] = df[col].astype(dtype)
 
