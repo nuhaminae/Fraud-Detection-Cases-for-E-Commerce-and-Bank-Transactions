@@ -129,7 +129,7 @@ class EDA:
         print(f"\n{label} Columns: {list(df.columns)}")
         print(f"\n{label} Info:")
         df.info()
-        print("\n" + "*==*" * 30 + "\n")
+        print("\n" + "*==*" * 25 + "\n")
 
     # ------------Data Cleaning------------#
     @staticmethod
@@ -242,7 +242,7 @@ class EDA:
         """
         self.credit = self.data_cleaning_single(self.credit_raw, "CreditCard")
         self.fraud = self.data_cleaning_single(self.fraud_raw, "FraudData")
-        self.ip = self.data_cleaning_single(self.ip_raw, "IPAddress Map")
+        self.ip = self.data_cleaning_single(self.ip_raw, "IPAddressMap")
 
     # ------------Handle Missing Values------------#
 
@@ -318,7 +318,7 @@ class EDA:
         """
         self.credit = self.missing_values_single(self.credit, "CreditCard")
         self.fraud = self.missing_values_single(self.fraud, "FraudData")
-        self.ip = self.missing_values_single(self.ip, "IPAddress Map")
+        self.ip = self.missing_values_single(self.ip, "IPAddressMap")
 
     # ------------Univariate EDA------------#
     def univariate_single(self, df, label):
@@ -327,7 +327,7 @@ class EDA:
 
         This method visualises the distribution of numeric columns using histograms
         and calculates skewness and kurtosis. It also visualises the frequency
-        of categorical columns using countplots, including the top 20 countries.
+        of categorical columns using countplots, including the top 10 countries.
 
         Args:
             df (pd.DataFrame): The input DataFrame.
@@ -346,6 +346,7 @@ class EDA:
         # Visualise Distribution
         numeric_cols = df.select_dtypes(include="number").columns
         exclude_cols = {
+            "Class",
             "Ip_Address",
             "Lower_Bound_Ip_Address",
             "Upper_Bound_Ip_Address",
@@ -354,9 +355,11 @@ class EDA:
         if plot_cols:
             print(f"\n{label}: Visualising numerical values ...\n")
 
-        for col in plot_cols:
+        palette = sns.color_palette("Set1", len(plot_cols))
+
+        for i, col in enumerate(plot_cols):
             plt.figure(figsize=(10, 5))
-            sns.histplot(df[col], bins=50, kde=True, color="green")
+            sns.histplot(df[col], bins=50, kde=True, color=palette[i])
             plt.title(f"{label} - Distribution of {col}")
             plt.grid()
             plt.tight_layout()
@@ -383,6 +386,25 @@ class EDA:
 
             print(summary_stats)
 
+        # Class Distribution Bar Plot
+        if "Class" in df.columns:
+            print(f"\n{label}: Class Distribution Bar Plot ...\n")
+            plt.figure(figsize=(10, 5))
+            sns.countplot(data=df, x="Class", hue="Class", palette="Set1")
+            plt.title(f"{label} - Class Distribution")
+            plt.xlabel("Class (0 = Legitimate, 1 = Fraud)")
+            plt.ylabel("Transaction Count")
+            plt.grid()
+            plt.tight_layout()
+
+            if self.plot_dir:
+                plot_path = os.path.join(self.plot_dir, f"{label}_Class_count.png")
+                plt.savefig(plot_path)
+                print(f"Plot saved to {self.safe_relpath(plot_path)}")
+
+            plt.show()
+            plt.close()
+
         # Categorical Frequency
         cat_cols = df.select_dtypes(include="object").columns
         exclude_cols = {"User_Id", "Device_Id", "Country"}
@@ -393,7 +415,13 @@ class EDA:
 
         for col in plot_cols:
             plt.figure(figsize=(10, 5))
-            sns.countplot(data=df, x=col, order=df[col].value_counts().index, hue=col)
+            sns.countplot(
+                data=df,
+                x=col,
+                order=df[col].value_counts().index,
+                hue=col,
+                palette="Set1",
+            )
             plt.title(f"{label} - Frequency of {col}")
             plt.xticks(rotation=0)
             plt.grid()
@@ -416,16 +444,20 @@ class EDA:
 
             plt.figure(figsize=(10, 5))
             sns.countplot(
-                data=filtered_df, x="Country", order=top_countries, hue="Country"
+                data=filtered_df,
+                x="Country",
+                order=top_countries,
+                hue="Country",
+                palette="Set1",
             )
-            plt.title(f"{label} - Frequency of Top 20 Countries")
+            plt.title(f"{label} - Frequency of Top 10 Countries")
             plt.xticks(rotation=45, ha="right")
             plt.grid()
             plt.tight_layout()
 
             if self.plot_dir:
                 plot_path = os.path.join(
-                    self.plot_dir, f"{label}_Top20Country_count.png"
+                    self.plot_dir, f"{label}_Top10Country_count.png"
                 )
                 rel_plot_path = self.safe_relpath(plot_path)
                 plt.savefig(plot_path)
@@ -446,7 +478,7 @@ class EDA:
         """
         self.univariate_single(self.credit, "CreditCard")
         self.univariate_single(self.fraud, "FraudData")
-        self.univariate_single(self.ip, "IPAddress Map")
+        self.univariate_single(self.ip, "IPAddressMap")
 
     # ------------Bivariate EDA------------#
 
@@ -494,7 +526,7 @@ class EDA:
 
         for col in plot_cols:
             plt.figure(figsize=(10, 5))
-            sns.boxplot(data=df, x=target_col, y=col)
+            sns.boxplot(data=df, x=target_col, y=col, hue=target_col, palette="Set1")
             plt.title(f"{label} - {col} by {target_col}")
             plt.grid()
             plt.tight_layout()
@@ -528,8 +560,13 @@ class EDA:
             top_levels = df[col].value_counts().nlargest(10).index
             filtered_df = df[df[col].isin(top_levels)]
 
-            sns.countplot(x=col, hue=target_col, data=filtered_df, order=top_levels)
-            # sns.countplot(x=col, hue=target_col, data=df)
+            sns.countplot(
+                x=col,
+                data=filtered_df,
+                order=top_levels,
+                hue=target_col,
+                palette="Set1",
+            )
             plt.title(f"{label} - {col} vs {target_col}")
             plt.xticks(rotation=0)
             plt.grid()
@@ -577,7 +614,7 @@ class EDA:
         """
         self.bivariate_single(self.credit, "CreditCard")
         self.bivariate_single(self.fraud, "FraudData")
-        self.bivariate_single(self.ip, "IPAddress Map")
+        self.bivariate_single(self.ip, "IPAddressMap")
 
     # ------------Handle Outliers------------#
     def batch_impute_outliers(self, df, label, eligible_cols=None, threshold=3):
@@ -724,4 +761,25 @@ class EDA:
         rel_processed_dir = self.safe_relpath(self.processed_dir)
         df_name = os.path.join(self.processed_dir, "MapIPtoCountry.csv")
         self.fraud_by_country.to_csv(df_name, index=False)
-        print(f"Merged DataFrame 'MapIPtoCountry' saved to {rel_processed_dir}.\n")
+        print(f"Merged DataFrame 'MapIPtoCountry' saved to {rel_processed_dir}.")
+
+        # Geolocation Plot
+        fraud_rates = (
+            self.fraud_by_country.groupby("Country")["Class"].mean().reset_index()
+        )
+        top10 = fraud_rates.sort_values("Class", ascending=False).head(10)
+
+        plt.figure(figsize=(10, 5))
+        sns.barplot(data=top10, x="Class", y="Country", hue="Country", palette="Set1")
+        plt.title("Top 10 Countries by Fraud Rate")
+        plt.xlabel("Fraud Rate")
+        plt.grid()
+        plt.tight_layout()
+
+        if self.plot_dir:
+            plot_path = os.path.join(self.plot_dir, "Top10_Fraud_Countries.png")
+            plt.savefig(plot_path)
+            print(f"Plot saved to {self.safe_relpath(plot_path)}")
+
+        plt.show()
+        plt.close()
