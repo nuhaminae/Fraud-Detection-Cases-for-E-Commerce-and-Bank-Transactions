@@ -59,13 +59,13 @@ fraud_detection_project/
 ├── notebooks/                         # Exploratory Data Analysis and Feature Engineering notebooks
 │   ├── 01_eda.ipynb                   
 │   ├── 02_feature_engineering.ipynb
-│   ├── 03_modelling.ipynb              
-│   └── 04_model_explainability.ipynb
+│   ├── 03_modelling.ipynb              (next step)
+│   └── 04_model_explainability.ipynb   (next step)
 ├── scripts/                           # Core scripts
 │   ├── _01_data_preprocessing.py
 │   ├── _02_feature_engineering.py
-│   ├── _03_train_model.py
-│   └── _04_explain_model.py
+│   ├── _03_train_model.py              (next step)
+│   └── _04_explain_model.py            (next step)
 ├── tests/
 ├── .dvcignore
 ├── .flake8
