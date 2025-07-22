@@ -5,11 +5,16 @@
 [![CI](https://github.com/nuhaminae/Fraud-Detection-Cases-for-E-Commerce-and-Bank-Transactions/actions/workflows/CI.yml/badge.svg)](https://github.com/nuhaminae/Fraud-Detection-Cases-for-E-Commerce-and-Bank-Transactions/actions/workflows/CI.yml)
 
 ## Overview
-
+This project tackles the detection of fraudulent activities across e-commerce and banking transactions using machine learning and geolocation intelligence. It emphasises strong data preprocessing pipelines, class imbalance handling, and interpretable modelling to balance security and customer experience.
 
 ---
 ## Key Features
-
+- Modular preprocessing scripts for fraud detection datasets.
+- Feature engineering tailored to time-based patterns and transaction velocity.
+- Class imbalance handling using SMOTE with strict datatype safeguards.
+- Scaled, reproducible train/test splits for both bank and e-commerce transactions.
+- CI pipelines and pre-commit checks for code consistency and quality.
+- SHAP-based model explainability integrated for transparency. (next step)
 
 ---
 ## Table of Contents
@@ -24,34 +29,53 @@
 
 ---
 ## Project Background
+Fraud detection is a high-stakes domain where false positives disrupt user trust and false negatives cause financial losses. This project simulates real-world detection scenarios by preprocessing, modelling, and interpreting two datasets: e-commerce transactions and anonymised bank credit records.
 
+It draws on business challenges faced by Adey Innovations Inc., where detection models must be explainable, accurate, and scalable for operational deployment
 
 ---
 ## Data Sources
-
+1. _**CreditCard.csv**_
+    * Bank transaction data with PCA-transformed features (V1–V28) and fraud labels.
+    * Challenge: Extremely imbalanced and anonymised features.
+2. _**FraudData.csv**_
+    * Transaction metadata for e-commerce purchases.
+    * Includes user and device identifiers, timestamps, purchase values, IP addresses, and fraud labels.
+    * Challenge: High class imbalance + potential data leakage from IDs.
+3. _**IpAddressToCountry.csv**_
+    * Mapping IP ranges to country for geolocation enrichment.
+    * Integrated via integer casting and merge logic.
 
 ---
 ## Project Structure
 ```
 fraud_detection_project/
+├── dvc/                               # Data Version Control
+├── .github/                           # CI workflows
 ├── data/
-│   ├── raw/                           # Original datasets (e.g., Fraud_Data.csv, creditcard.csv)
+│   ├── raw/                           # Original datasets
 │   └── processed/                     # Cleaned and transformed datasets
-├── notebooks/
-│   ├── 01_eda.ipynb                   # Exploratory Data Analysis
+├── insights/                          # Plots and charts for reporting
+├── notebooks/                         # Exploratory Data Analysis and Feature Engineering notebooks
+│   ├── 01_eda.ipynb                   
 │   ├── 02_feature_engineering.ipynb
-│   ├── 03_modeling.ipynb
+│   ├── 03_modelling.ipynb              
 │   └── 04_model_explainability.ipynb
 ├── scripts/                           # Core scripts
 │   ├── _01_data_preprocessing.py
 │   ├── _02_feature_engineering.py
 │   ├── _03_train_model.py
 │   └── _04_explain_model.py
-├── tests/  
-├── insights/                          # Plots and charts for reporting
+├── tests/
+├── .dvcignore
+├── .flake8
+├── .gitignore                         # Ignore unnecessary files
+├── .pre-commit-config.yaml            # Pre-commit configuration
+├── format.ps1                         # Formatting
+├── pyproject.toml
 ├── requirements.txt                   # Pip install fallback
 ├── README.md                          # Project overview and setup instructions
-└── .gitignore                         # Ignore unnecessary files
+└── requirements.txt                   # Pip install fallback
 ```
 
 ---
@@ -94,7 +118,7 @@ This project uses pre-commit hooks to automatically format and lint `.py` and `.
 |Tool	      | Purpose                                       |
 |:---------:|-----------------------------------------------|
 | Black	    |Enforces consistent code formatting            | 
-| isort	    |Sorts and organizes import statements          |
+| isort	    |Sorts and organises import statements          |
 | Flake8		|Lints Python code for style issues             |
 | nbQA		  |Runs Black, isort, and Flake8 inside notebooks |
 
@@ -106,7 +130,12 @@ Make sure to follow best practices for version control, testing, and documentati
 
 ---
 ## Project Highlights
-
+- Robust class-aware preprocessing and type casting to preserve fraud signals.
+- Transaction frequency and velocity features per user/device.
+- Engineered temporal features like Hour_Of_Day, Day_Of_Week, Time_Since_Signup.
+- Advanced class imbalance correction using SMOTE post-encoding and datatype filtering.
+- Defensive coding practices like safe_relpath, clean feature selection, and testable pipelines.
+- Visual insights powered by SHAP, enhancing model explainability and business trust. (Next steps) 
 
 ---
 ## Project Status
