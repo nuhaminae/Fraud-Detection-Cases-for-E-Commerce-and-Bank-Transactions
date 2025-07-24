@@ -764,6 +764,17 @@ class EDA:
         if not unknowns.empty:
             print(f"{len(unknowns)} IPs could not be mapped to any country.")
 
+        fraud_rate_by_country = (
+            self.fraud_by_country.groupby("Country")["Class"].mean().reset_index()
+        )
+        # Rename "Class" column to "Fraud_Rate" on fraud_rate_by_country df
+        fraud_rate_by_country.rename(columns={"Class": "Fraud_Rate"}, inplace=True)
+
+        # Merge into main df
+        self.fraud_by_country = self.fraud_by_country.merge(
+            fraud_rate_by_country, on="Country", how="left"
+        )
+
         print("\nMapped DataFrame head ...")
         display(self.fraud_by_country.head())
 
@@ -773,13 +784,17 @@ class EDA:
         print(f"Merged DataFrame 'MapIPtoCountry' saved to {rel_processed_dir}.")
 
         # Geolocation Plot
-        fraud_rates = (
-            self.fraud_by_country.groupby("Country")["Class"].mean().reset_index()
+        # Get top 10 unique countires by "Fraud_Rate"
+        top10 = (
+            self.fraud_by_country.sort_values("Fraud_Rate", ascending=False)
+            .drop_duplicates("Country")
+            .head(10)
         )
-        top10 = fraud_rates.sort_values("Class", ascending=False).head(10)
 
         plt.figure(figsize=(10, 5))
-        sns.barplot(data=top10, x="Class", y="Country", hue="Country", palette="Set1")
+        sns.barplot(
+            data=top10, x="Fraud_Rate", y="Country", hue="Country", palette="Set1"
+        )
         plt.title("Top 10 Countries by Fraud Rate")
         plt.xlabel("Fraud Rate")
         plt.grid()
