@@ -129,7 +129,7 @@ class EDA:
         print(f"\n{label} Columns: {list(df.columns)}")
         print(f"\n{label} Info:")
         df.info()
-        print("\n" + "*==*" * 25 + "\n")
+        print("\n" + "*==*" * 20 + "\n")
 
     # ------------Data Cleaning------------#
     @staticmethod
@@ -467,7 +467,7 @@ class EDA:
             plt.show()
             plt.close()
 
-        print("\n" + "*==*" * 30 + "\n")
+        print("\n" + "*==*" * 20 + "\n")
 
     def univariate(self):
         """
@@ -603,7 +603,7 @@ class EDA:
         plt.show()
         plt.close()
 
-        print("\n" + "*==*" * 30 + "\n")
+        print("\n" + "*==*" * 20 + "\n")
 
     def bivariate(self):
         """
@@ -701,7 +701,10 @@ class EDA:
         # Save processed data to CSV
         df_name = os.path.join(self.processed_dir, f"{label}_processed.csv")
         df.to_csv(df_name, index=False)
-        print(f"{label}: Processed DataFrame saved to {rel_processed_dir}.\n")
+        print(
+            f"Processed DataFrame '{label}_processed.csv' \
+                saved to {rel_processed_dir}.\n"
+        )
 
         return df
 
@@ -760,7 +763,7 @@ class EDA:
         # Save processed data to CSV
         rel_processed_dir = self.safe_relpath(self.processed_dir)
         df_name = os.path.join(self.processed_dir, "MapIPtoCountry.csv")
-        self.fraud_by_country.to_csv(df_name, index=False)
+        self.fraud_by_country.sort_values("User_Id").to_csv(df_name, index=False)
         print(f"Merged DataFrame 'MapIPtoCountry' saved to {rel_processed_dir}.")
 
         # Geolocation Plot
