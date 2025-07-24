@@ -130,12 +130,12 @@ pre-commit run --all-files
 The following plots illustrate key moments in the pipeline, revealing patterns that informed preprocessing and modelling decisions:
 * Class Imbalance Before Resampling
 ![Class Imbalance](insights/eda/FraudData_Class_count.png)
-*Resampled Class Balance Using SMOTE
+* Resampled Class Balance Using SMOTE
 ![Class Balance](insights/feature_engineering/new_class_count.png)
-*Most Active Countries Based on IP Mapping
+* Most Active Countries Based on IP Mapping
 ![Top 10 Countries](insights/eda/IPAddressMap_Top10Country_count.png)
-Top 10 Countries by Fraud Rate
-*![Top 10 Countries by Fraud](insights/eda/Top10_Fraud_Countries.png)
+* Top 10 Countries by Fraud Rate
+![Top 10 Countries by Fraud](insights/eda/Top10_Fraud_Countries.png)
 
 These visuals bring clarity to fraud distribution, justify SMOTE-based resampling, and highlight the role of geolocation enrichment in fraud detection.
 
