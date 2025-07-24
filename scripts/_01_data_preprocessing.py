@@ -94,6 +94,11 @@ class EDA:
             df = pd.read_csv(path)
             # Capitalise column names for consistency
             df.columns = [col.title() for col in df.columns]
+
+            # Sort DataFrame by "User_Id" column and sort index
+            if "User_Id" in df.columns:
+                df = df.sort_values("User_Id").reset_index(drop=True)
+
             print(f"{label} loaded from {rel_path}")
             self.display_info(df, label)
             return df
@@ -639,6 +644,7 @@ class EDA:
             pd.DataFrame: The DataFrame with imputed values. The processed DataFrame
                             issaved to a CSV file in the specified processed directory.
         """
+        rel_processed_dir = self.safe_relpath(self.processed_dir)
 
         df = df.copy()
 
@@ -659,52 +665,48 @@ class EDA:
             print(
                 f"{label}: 'Class' column not found. Skipping class-aware imputation."
             )
-            rel_processed_dir = self.safe_relpath(self.processed_dir)
+        else:
 
-            # Save processed data to CSV
-            df_name = os.path.join(self.processed_dir, f"{label}_processed.csv")
-            df.to_csv(df_name, index=False)
-            print(f"{label}: Processed DataFrame saved to {rel_processed_dir}.\n")
-            return df
+            for col in eligible_cols:
+                for class_value in [0, 1]:
+                    class_df = df[df["Class"] == class_value]
 
-        for col in eligible_cols:
-            for class_value in [0, 1]:
-                class_df = df[df["Class"] == class_value]
+                    # IQR
+                    Q1 = class_df[col].quantile(0.25)
+                    Q3 = class_df[col].quantile(0.75)
+                    IQR = Q3 - Q1
+                    lower_iqr = Q1 - 1.5 * IQR
+                    upper_iqr = Q3 + 1.5 * IQR
 
-                # IQR
-                Q1 = class_df[col].quantile(0.25)
-                Q3 = class_df[col].quantile(0.75)
-                IQR = Q3 - Q1
-                lower_iqr = Q1 - 1.5 * IQR
-                upper_iqr = Q3 + 1.5 * IQR
+                    # Z-score
+                    z_scores = (class_df[col] - class_df[col].mean()) / class_df[
+                        col
+                    ].std()
+                    outliers = (
+                        (class_df[col] < lower_iqr)
+                        | (class_df[col] > upper_iqr)
+                        | (z_scores.abs() > threshold)
+                    )
 
-                # Z-score
-                z_scores = (class_df[col] - class_df[col].mean()) / class_df[col].std()
-                outliers = (
-                    (class_df[col] < lower_iqr)
-                    | (class_df[col] > upper_iqr)
-                    | (z_scores.abs() > threshold)
-                )
+                    outlier_indices = class_df[outliers].index
 
-                outlier_indices = class_df[outliers].index
+                    # Impute
+                    median_value = class_df[col].median()
+                    # Avoids re-imputing identical values
+                    if not df.loc[outlier_indices, col].eq(median_value).all():
+                        df.loc[outlier_indices, col] = median_value
 
-                # Impute
-                median_value = class_df[col].median()
-                # Avoids re-imputing identical values
-                if not df.loc[outlier_indices, col].eq(median_value).all():
-                    df.loc[outlier_indices, col] = median_value
-
-        print(f"{label}: Outliers handled.")
-
-        rel_processed_dir = self.safe_relpath(self.processed_dir)
+            print(f"{label}: Outliers handled.")
 
         # Save processed data to CSV
         df_name = os.path.join(self.processed_dir, f"{label}_processed.csv")
         df.to_csv(df_name, index=False)
         print(
             f"Processed DataFrame '{label}_processed.csv' \
-                saved to {rel_processed_dir}.\n"
+                saved to {rel_processed_dir}."
         )
+
+        display(df.head())
 
         return df
 
@@ -750,6 +752,8 @@ class EDA:
         Returns:
             None. The merged DataFrame is saved to a file.
         """
+        rel_processed_dir = self.safe_relpath(self.processed_dir)
+
         self.fraud_by_country = self.fraud.copy()
         # Apply country mapping
         self.fraud_by_country["Country"] = self.fraud_by_country["Ip_Address"].apply(
@@ -760,10 +764,12 @@ class EDA:
         if not unknowns.empty:
             print(f"{len(unknowns)} IPs could not be mapped to any country.")
 
+        print("\nMapped DataFrame head ...")
+        display(self.fraud_by_country.head())
+
         # Save processed data to CSV
-        rel_processed_dir = self.safe_relpath(self.processed_dir)
         df_name = os.path.join(self.processed_dir, "MapIPtoCountry.csv")
-        self.fraud_by_country.sort_values("User_Id").to_csv(df_name, index=False)
+        self.fraud_by_country.to_csv(df_name, index=False)
         print(f"Merged DataFrame 'MapIPtoCountry' saved to {rel_processed_dir}.")
 
         # Geolocation Plot
@@ -782,7 +788,7 @@ class EDA:
         if self.plot_dir:
             plot_path = os.path.join(self.plot_dir, "Top10_Fraud_Countries.png")
             plt.savefig(plot_path)
-            print(f"Plot saved to {self.safe_relpath(plot_path)}")
+            print(f"\nPlot saved to {self.safe_relpath(plot_path)}")
 
         plt.show()
         plt.close()
