@@ -178,7 +178,7 @@ class EDA:
             "Ip_Address": "int",
             "Lower_Bound_Ip_Address": "int",
             "Upper_Bound_Ip_Address": "int",
-            "purchase_value": "float",
+            "Purchase_Value": "float",
             "Time": "float",
             "V1": "float",
             "V2": "float",
