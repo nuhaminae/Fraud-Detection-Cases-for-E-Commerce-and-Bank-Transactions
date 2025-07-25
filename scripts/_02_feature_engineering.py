@@ -1,4 +1,5 @@
-# _01_data_preprocessing.py
+# _02_feature_engineering.py
+import calendar
 import os
 
 import matplotlib.pyplot as plt
@@ -6,6 +7,7 @@ import pandas as pd
 import seaborn as sns
 from imblearn.over_sampling import SMOTE
 from IPython.display import display
+from sklearn.impute import SimpleImputer
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
@@ -40,7 +42,7 @@ class FeatureEngineering:
         if not os.path.exists(self.processed_dir):
             os.makedirs(self.processed_dir)
 
-        print("FeatureEngineering class is Initialised\n")
+        print("FeatureEngineering class is initialised\n")
         self.load_df()
 
     @staticmethod
@@ -89,17 +91,15 @@ class FeatureEngineering:
                 "Age": "int",
                 "Ip_Address": "int",
                 "Class": "int",
+                "Country": "object",
+                "Fraud_Rate": "float",
             }
 
             for col, dtype in dict_col.items():
                 if col in df.columns:
                     if dtype == "datetime":
                         df[col] = pd.to_datetime(df[col], errors="coerce")
-                    elif col in [
-                        "Ip_Address",
-                        "Lower_Bound_Ip_Address",
-                        "Upper_Bound_Ip_Address",
-                    ]:
+                    elif col in ["Ip_Address"]:
                         df[col] = pd.to_numeric(df[col], errors="coerce")
                         # Round to get clean integers before casting
                         df[col] = df[col].round().astype("int64")
@@ -110,7 +110,7 @@ class FeatureEngineering:
             display(df.head())
             print(f"\nDataFrame Shape: {df.shape}")
             print(f"\nDataFrame Columns: {list(df.columns)}")
-            print("DataFrame Info:")
+            print("\nDataFrame Info:")
             df.info()
 
             self.df = df  # Assign loaded and cleaned DataFrame
@@ -154,16 +154,19 @@ class FeatureEngineering:
         self.df = self.df.join(freq_by_user, on="User_Id").join(
             freq_by_device, on="Device_Id"
         )
-        # Time since last transaction per user
-        self.df.sort_values(["User_Id", "Purchase_Time"], inplace=True)
-        self.df["Time_Since_Last"] = (
-            self.df.groupby("User_Id")["Purchase_Time"].diff().dt.total_seconds()
-        )
-        self.df["Time_Since_Last"] = self.df["Time_Since_Last"].fillna(-1)
 
-        self.df["Velocity"] = self.df["Purchase_Value"] / self.df[
-            "Time_Since_Last"
-        ].replace(0, pd.NA)
+        # Velocity
+        self.df_sorted = self.df.sort_values(by=["Device_Id", "Purchase_Time"])
+        first_txn_idx = self.df_sorted.groupby("Device_Id").head(1).index
+
+        self.df["is_first_txn"] = False
+        self.df.loc[first_txn_idx, "is_first_txn"] = True
+        self.df.loc[self.df["is_first_txn"], "Time_Since_Last"] = 0
+
+        self.df["Velocity"] = self.df["Purchase_Value"] / (
+            self.df["Time_Since_Last"] + 1e-6
+        )
+
         # Visualise Transaction Velocity Distribution
         plt.figure(figsize=(10, 5))
         sns.histplot(
@@ -182,7 +185,7 @@ class FeatureEngineering:
         if self.plot_dir:
             plot_path = os.path.join(self.plot_dir, "velocity_hist.png")
             plt.savefig(plot_path)
-            print(f"Plot saved to {rel_plot_path}")
+            print(f"\nPlot saved to {rel_plot_path}")
 
         # show and close plot
         plt.show()
@@ -216,10 +219,23 @@ class FeatureEngineering:
         plt.close()
 
         # Day of week
-        self.df["Day_Of_Week"] = self.df["Purchase_Time"].dt.dayofweek
+        # Map numerical day of week to name
+        self.df["Day_Of_Week"] = self.df["Purchase_Time"].dt.dayofweek.map(
+            lambda x: calendar.day_name[x]
+        )
+        # Define weekday order
+        weekday_order = list(calendar.day_name)  # ['Monday', 'Tuesday', ..., 'Sunday']
+        # Prepare grouped data
+        grouped_df = self.df.groupby("Day_Of_Week")["Class"].mean().reset_index()
+        # Sort using predefined order
+        grouped_df["Day_Of_Week"] = pd.Categorical(
+            grouped_df["Day_Of_Week"], categories=weekday_order, ordered=True
+        )
+        grouped_df = grouped_df.sort_values("Day_Of_Week")
+
         # VisualiseFraud Rate by Day of Week
         sns.barplot(
-            data=self.df.groupby("Day_Of_Week")["Class"].mean().reset_index(),
+            data=grouped_df,
             x="Day_Of_Week",
             y="Class",
             hue="Day_Of_Week",
@@ -229,7 +245,6 @@ class FeatureEngineering:
         plt.ylabel("Mean Fraud Rate")
         plt.grid()
         plt.tight_layout()
-        plt.legend().set_visible(False)
 
         if self.plot_dir:
             plot_path = os.path.join(self.plot_dir, "day_week_bar.png")
@@ -286,25 +301,29 @@ class FeatureEngineering:
             X, y, stratify=y, test_size=0.2, random_state=42
         )
 
-        # Drop non-numeric columns (like IDs and datetime leftovers)
-        # Drop datetime columns before SMOTE
+        # Drop numeric and datetime columns
         non_numeric_cols = X_train.select_dtypes(exclude=["number"]).columns
         datetime_cols = X_train.select_dtypes(include=["datetime64[ns]"]).columns
         X_train = X_train.drop(columns=non_numeric_cols.union(datetime_cols))
         X_test = X_test.drop(columns=non_numeric_cols.union(datetime_cols))
 
+        # Handle missing values with median imputation
+        imputer = SimpleImputer(strategy="median")
+        X_train_imputed = pd.DataFrame(
+            imputer.fit_transform(X_train), columns=X_train.columns
+        )
+        X_test_imputed = pd.DataFrame(imputer.transform(X_test), columns=X_test.columns)
+
         # Class imbalance handling
-        # fraud_rate = self.df["Class"].mean()
-        # print(f"Original Fraud Ratio: {fraud_rate:.2%}")
         print(f"Original Fraud Ratio: {y_train.mean():.2%}")
         smote = SMOTE(random_state=42)
-        X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
-
-        print(
-            f"Shape before SMOTE: {X_train.shape}, \
-                after SMOTE: {X_train_resampled.shape}"
+        X_train_resampled, y_train_resampled = smote.fit_resample(
+            X_train_imputed, y_train
         )
-        print(f"Resampled Fraud Ratio: {y_train_resampled.mean():.2%}")
+
+        print(f"\nShape before SMOTE: {X_train.shape}")
+        print(f"Shape after SMOTE: {X_train_resampled.shape}")
+        print(f"\nResampled Fraud Ratio: {y_train_resampled.mean():.2%}")
 
         # Normalisation and scaling
         numeric_cols = X_train.select_dtypes(
@@ -317,19 +336,18 @@ class FeatureEngineering:
         ).columns
         scaler = StandardScaler()
         X_train_scaled = scaler.fit_transform(X_train_resampled[numeric_cols])
-        X_test_scaled = scaler.transform(X_test[numeric_cols])
+        X_test_scaled = scaler.transform(X_test_imputed[numeric_cols])
 
         # Save
         X_scaled_df = pd.DataFrame(X_train_scaled, columns=numeric_cols)
         y_resampled_df = pd.DataFrame(y_train_resampled, columns=["Class"])
-
         merged_df = pd.concat([X_scaled_df, y_resampled_df], axis=1)
 
         save_path = os.path.join(self.processed_dir, "Train_Resampled_Scaled.csv")
         merged_df.to_csv(save_path, index=False)
         print(
-            f"Resampled and scaled training data \
-                'Train_Resampled_Scaled'saved to {self.safe_relpath(save_path)}."
+            f"Resampled and scaled training data 'Train_Resampled_Scaled'saved to \
+                {self.safe_relpath(save_path)}.\n"
         )
 
         # Class Distribution Bar Plot After Class Balancing
@@ -355,6 +373,19 @@ class FeatureEngineering:
             "X_test_scaled.csv", index=False
         )
         pd.DataFrame(y_test).to_csv("y_test.csv", index=False)
+
+        # Save scaled test set for model evaluation
+        pd.DataFrame(X_test_scaled, columns=numeric_cols).to_csv(
+            "X_test_scaled.csv", index=False
+        )
+        pd.DataFrame(y_test).to_csv("y_test.csv", index=False)
+
+        # Save raw (unscaled) for SHAP interpretation
+        pd.DataFrame(X_train_resampled, columns=X_train_imputed.columns).to_csv(
+            "X_train_resampled_raw.csv", index=False
+        )
+
+        return merged_df
 
     def run_all(self):
         """
