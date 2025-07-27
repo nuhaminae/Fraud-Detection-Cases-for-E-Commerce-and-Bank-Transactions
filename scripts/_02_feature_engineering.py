@@ -444,7 +444,7 @@ class FeatureEngineering:
         credit_merged_df = pd.concat([X_scaled_df, y_resampled_df], axis=1)
 
         save_path = os.path.join(
-            self.processed_dir, "Credit_Train_Resampled_Scaled_Credit.csv"
+            self.processed_dir, "Train_Resampled_Scaled_Credit.csv"
         )
         credit_merged_df.to_csv(save_path, index=False)
         print(
