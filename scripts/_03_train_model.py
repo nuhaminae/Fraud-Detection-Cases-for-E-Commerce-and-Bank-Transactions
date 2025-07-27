@@ -113,17 +113,23 @@ class TrainModel:
             tuple: A tuple containing X_train, y_train, X_test, y_test DataFrames
                     and/or Series.
         """
-        print(f"\n--- {label} Dataset ---")
-        print(f"Training data loaded from {self.safe_relpath(train_path)}")
-        print(f"Training data loaded from {self.safe_relpath(test_x_path)}")
-        print(f"Training data loaded from {self.safe_relpath(test_y_path)}\n")
-        df_train = pd.read_csv(train_path)
-        self.display_info(df_train, label)
-        X_train = df_train.drop(columns=["Class"])
-        y_train = df_train["Class"]
-        X_test = pd.read_csv(test_x_path)
-        y_test = pd.read_csv(test_y_path).squeeze()
-        return X_train, y_train, X_test, y_test
+        try:
+            print(f"\n--- {label} Dataset ---")
+            print(f"Training data loaded from {self.safe_relpath(train_path)}")
+            print(f"Test features loaded from {self.safe_relpath(test_x_path)}")
+            print(f"Test targets loaded from {self.safe_relpath(test_y_path)}\n")
+
+            df_train = pd.read_csv(train_path)
+            self.display_info(df_train, label)
+            X_train = df_train.drop(columns=["Class"])
+            y_train = df_train["Class"]
+            X_test = pd.read_csv(test_x_path)
+            y_test = pd.read_csv(test_y_path).squeeze()
+            return X_train, y_train, X_test, y_test
+
+        except Exception as e:
+            print(f"Failed to load {label} data: {e}")
+            return None
 
     def load_and_process(self):
         """
@@ -154,17 +160,20 @@ class TrainModel:
             model_name (str): The name of the model.
         """
         plt.figure(figsize=(5, 4))
-        sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", cbar=False)
+        sns.heatmap(cm, annot=True, fmt="d", cmap="Reds", cbar=False)
         plt.title(f"{label} Confusion Matrix {model_name}")
         plt.xlabel("Predicted")
         plt.ylabel("Actual")
         plt.tight_layout()
 
-        if self.plot_dir:
-            sanitized_name = model_name.replace(" ", "_")
-            file_path = os.path.join(self.plot_dir, f"{label}_cm_{sanitized_name}.png")
-            plt.savefig(file_path)
-            print(f"Confusion matrix saved to {self.safe_relpath(file_path)}")
+        if not self.plot_dir:
+            print(f"No plot directory provided for {label}. Skipping plot saving.")
+            return
+        sanitized_name = model_name.replace(" ", "_")
+        file_path = os.path.join(self.plot_dir, f"{label}_cm_{sanitized_name}.png")
+        plt.savefig(file_path)
+        print(f"Confusion matrix saved to {self.safe_relpath(file_path)}")
+
         plt.show()
         plt.close()
 
@@ -178,6 +187,7 @@ class TrainModel:
             label (str): The label for the dataset ('Credit' or 'Fraud').
             model_name (str): The name of the model.
         """
+
         plt.figure(figsize=(6, 4))
         plt.plot(recall, precision, marker=".", label=f"AUC-PR {model_name}")
         plt.title(f"{label} Precision-Recall Curve {model_name}")
@@ -187,11 +197,14 @@ class TrainModel:
         plt.legend()
         plt.tight_layout()
 
-        if self.plot_dir:
-            sanitized_name = model_name.replace(" ", "_")
-            file_path = os.path.join(self.plot_dir, f"{label}_pr_{sanitized_name}.png")
-            plt.savefig(file_path)
-            print(f"Precision-Recall curve saved to {self.safe_relpath(file_path)}")
+        if not self.plot_dir:
+            print(f"No plot directory provided for {label}. Skipping plot saving.")
+            return
+        sanitized_name = model_name.replace(" ", "_")
+        file_path = os.path.join(self.plot_dir, f"{label}_pr_{sanitized_name}.png")
+        plt.savefig(file_path)
+        print(f"Precision-Recall curve saved to {self.safe_relpath(file_path)}")
+
         plt.show()
         plt.close()
 
@@ -207,7 +220,8 @@ class TrainModel:
             model_name (str): The name of the model.
 
         Returns:
-            tuple: A tuple containing F1 score, AUC-PR, and confusion matrix.
+            tuple[float, float, np.ndarray]: F1 score, AUC-PR, and confusion matrix.
+
         """
         y_pred = model.predict(X_test)
         f1 = f1_score(y_test, y_pred)
