@@ -1,0 +1,5 @@
+outs:
+- md5: c49477b36cf753a459d81a5c6379e494
+  size: 268002060
+  hash: md5
+  path: Train_Resampled_Scaled_Credit.csv
