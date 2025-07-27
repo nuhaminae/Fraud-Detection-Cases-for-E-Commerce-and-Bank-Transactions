@@ -66,7 +66,7 @@ fraud_detection_project/
 │   ├── _02_feature_engineering.py
 │   ├── _03_train_model.py              
 │   └── _04_explain_model.py            (next step)
-├── tests/
+├── tests/                              
 ├── .dvcignore
 ├── .flake8
 ├── .gitignore                         # Ignore unnecessary files
