@@ -1,0 +1,5 @@
+outs:
+- md5: 7f4b8a2c35c4486047d3a2c108478759
+  size: 5602218
+  hash: md5
+  path: X_test_scaled_fraud.csv

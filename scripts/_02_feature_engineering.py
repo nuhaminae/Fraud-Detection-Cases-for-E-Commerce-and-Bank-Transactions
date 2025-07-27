@@ -3,6 +3,7 @@ import calendar
 import os
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import seaborn as sns
 from imblearn.over_sampling import SMOTE
@@ -21,17 +22,19 @@ class FeatureEngineering:
     transformation steps like one-hot encoding, scaling, and handling class imbalance.
     """
 
-    def __init__(self, fraud_path, processed_dir, plot_dir=None):
+    def __init__(self, credit_path, fraud_path, processed_dir, plot_dir=None):
         """
         Initiate FeatureEngineering class from DataFrame path.
 
         Args:
+            credit_path (str): The path to the credit card DataFrame file (CSV).
             fraud_path (str): The path to the raw fraud data DataFrame file (CSV).
             processed_dir (str, optional): The directory to save processed DataFrames.
             plot_dir (str, optional): The directory to save plots.
                                     Defaults to None.
         """
         self.fraud_path = fraud_path
+        self.credit_path = credit_path
         self.processed_dir = processed_dir
         self.plot_dir = plot_dir
         self.df = None
@@ -63,9 +66,9 @@ class FeatureEngineering:
         except ValueError:
             return path  # Fallback to absolute path if on different drives
 
-    def load_df(self):
+    def load_single_df(self, path, label):
         """
-        Load a single DataFrame from the specified fraud_path.
+        Load a single DataFrame from the specified paths.
 
         This method reads the CSV file, corrects data types for specific columns,
         and displays the head, shape, and info of the loaded DataFrame.
@@ -73,9 +76,9 @@ class FeatureEngineering:
         Returns:
             pd.DataFrame: The loaded and cleaned DataFrame, or None if loading fails.
         """
-        rel_path = self.safe_relpath(self.fraud_path)
+        rel_path = self.safe_relpath(path)
         try:
-            df = pd.read_csv(self.fraud_path)
+            df = pd.read_csv(path)
             print(f"DataFrame loaded from {rel_path}")
 
             # Correct data types
@@ -83,16 +86,6 @@ class FeatureEngineering:
                 "User_Id": "object",
                 "Signup_Time": "datetime",
                 "Purchase_Time": "datetime",
-                "Purchase_Value": "float",
-                "Device_Id": "object",
-                "Source": "object",
-                "Browser": "object",
-                "Sex": "object",
-                "Age": "int",
-                "Ip_Address": "int",
-                "Class": "int",
-                "Country": "object",
-                "Fraud_Rate": "float",
             }
 
             for col, dtype in dict_col.items():
@@ -106,20 +99,23 @@ class FeatureEngineering:
                     else:
                         df[col] = df[col].astype(dtype)
 
-            print("DataFrame Head:")
+            print(f"{label} Head:")
             display(df.head())
-            print(f"\nDataFrame Shape: {df.shape}")
-            print(f"\nDataFrame Columns: {list(df.columns)}")
-            print("\nDataFrame Info:")
+            print(f"\n{label}Shape: {df.shape}")
+            print(f"\n{label}Columns: {list(df.columns)}")
+            print(f"\n{label}Info:")
             df.info()
+            print("\n" + "*==*" * 20 + "\n")
 
-            self.df = df  # Assign loaded and cleaned DataFrame
-
-            return self.df
+            return df
 
         except Exception as e:
             print(f"Failed to load from {rel_path}: {e}")
             return None
+
+    def load_df(self):
+        self.credit = self.load_single_df(self.credit_path, "CreditCard")
+        self.fraud = self.load_single_df(self.fraud_path, "FraudData")
 
     def transaction_frequency_Velocity(self):
         """
@@ -137,40 +133,49 @@ class FeatureEngineering:
             pd.DataFrame: The DataFrame with added frequency, velocity,
                 and time-based features.
         """
-
         rel_plot_path = self.safe_relpath(self.plot_dir)
 
         # Transaction count per device
         freq_by_user = (
-            self.df.groupby("User_Id")["Purchase_Time"]
+            self.fraud.groupby("User_Id")["Purchase_Time"]
             .count()
             .rename("User_Transaction_Count")
         )
         freq_by_device = (
-            self.df.groupby("Device_Id")["Purchase_Time"]
+            self.fraud.groupby("Device_Id")["Purchase_Time"]
             .count()
             .rename("Device_Transaction_Count")
         )
-        self.df = self.df.join(freq_by_user, on="User_Id").join(
+        self.fraud = self.fraud.join(freq_by_user, on="User_Id").join(
             freq_by_device, on="Device_Id"
         )
 
-        # Velocity
-        self.df_sorted = self.df.sort_values(by=["Device_Id", "Purchase_Time"])
-        first_txn_idx = self.df_sorted.groupby("Device_Id").head(1).index
+        # Calc Velocity and Time Since Last by Device_Id col b/c user_Id is unique
+        # Sort once and reuse
+        self.df_sorted = self.fraud.sort_values(by=["Device_Id", "Purchase_Time"])
 
-        self.df["is_first_txn"] = False
-        self.df.loc[first_txn_idx, "is_first_txn"] = True
-        self.df.loc[self.df["is_first_txn"], "Time_Since_Last"] = 0
-
-        self.df["Velocity"] = self.df["Purchase_Value"] / (
-            self.df["Time_Since_Last"] + 1e-6
+        # Calculate time since last transaction
+        self.df_sorted["Time_Since_Last"] = (
+            self.df_sorted.groupby("Device_Id")["Purchase_Time"]
+            .diff()
+            .dt.total_seconds()  # converts timedelta to float seconds
         )
+
+        # Calculate velocity only for non-null time intervals
+        self.df_sorted["Velocity"] = np.nan  # Initialise column
+        valid_mask = self.df_sorted["Time_Since_Last"].notna()
+        self.df_sorted.loc[valid_mask, "Velocity"] = (
+            self.df_sorted.loc[valid_mask, "Purchase_Value"]
+            / self.df_sorted.loc[valid_mask, "Time_Since_Last"]
+        )
+
+        # Assign enriched data back
+        self.fraud = self.df_sorted.copy()
 
         # Visualise Transaction Velocity Distribution
         plt.figure(figsize=(10, 5))
         sns.histplot(
-            data=self.df[self.df["Velocity"].notna()],
+            data=(self.fraud[self.fraud["Velocity"] > 0.003]),
             x="Velocity",
             hue="Class",
             bins=50,
@@ -193,11 +198,11 @@ class FeatureEngineering:
 
         # Time-based features
         # Hour of day
-        self.df["Hour_Of_Day"] = self.df["Purchase_Time"].dt.hour
+        self.fraud["Hour_Of_Day"] = self.fraud["Purchase_Time"].dt.hour
         # Visualise Fraud Rate by Hour of Day
         plt.figure(figsize=(10, 5))
         sns.barplot(
-            data=self.df.groupby("Hour_Of_Day")["Class"].mean().reset_index(),
+            data=self.fraud.groupby("Hour_Of_Day")["Class"].mean().reset_index(),
             x="Hour_Of_Day",
             y="Class",
             hue="Hour_Of_Day",
@@ -220,13 +225,13 @@ class FeatureEngineering:
 
         # Day of week
         # Map numerical day of week to name
-        self.df["Day_Of_Week"] = self.df["Purchase_Time"].dt.dayofweek.map(
+        self.fraud["Day_Of_Week"] = self.fraud["Purchase_Time"].dt.dayofweek.map(
             lambda x: calendar.day_name[x]
         )
         # Define weekday order
         weekday_order = list(calendar.day_name)  # ['Monday', 'Tuesday', ..., 'Sunday']
         # Prepare grouped data
-        grouped_df = self.df.groupby("Day_Of_Week")["Class"].mean().reset_index()
+        grouped_df = self.fraud.groupby("Day_Of_Week")["Class"].mean().reset_index()
         # Sort using predefined order
         grouped_df["Day_Of_Week"] = pd.Categorical(
             grouped_df["Day_Of_Week"], categories=weekday_order, ordered=True
@@ -256,21 +261,21 @@ class FeatureEngineering:
         plt.close()
 
         # Time since signup
-        self.df["Time_Since_Signup"] = (
-            self.df["Purchase_Time"] - self.df["Signup_Time"]
+        self.fraud["Time_Since_Signup"] = (
+            self.fraud["Purchase_Time"] - self.fraud["Signup_Time"]
         ).dt.total_seconds()
 
-        self.df.head()
+        self.fraud.head()
 
         output_path = os.path.join(
             self.processed_dir, "FraudData_FeatureEngineered.csv"
         )
-        self.df.to_csv(output_path, index=False)
+        self.fraud.to_csv(output_path, index=False)
         print(f"Enriched fraud data saved to {self.safe_relpath(output_path)}")
 
-        return self.df
+        return self.fraud
 
-    def data_transformation(self):
+    def fraud_data_transformation(self):
         """
         Perform data transformation for model training.
 
@@ -289,8 +294,8 @@ class FeatureEngineering:
             None. The processed dataframes are saved to files.
         """
         # Split features and target
-        X = self.df.drop("Class", axis=1)
-        y = self.df["Class"]
+        X = self.fraud.drop("Class", axis=1)
+        y = self.fraud["Class"]
 
         # One-hot encode categoricals
         categorical = ["Source", "Browser", "Sex"]
@@ -326,11 +331,6 @@ class FeatureEngineering:
         print(f"\nResampled Fraud Ratio: {y_train_resampled.mean():.2%}")
 
         # Normalisation and scaling
-        numeric_cols = X_train.select_dtypes(
-            include=["float64", "int64"]
-        ).columns.tolist()
-
-        # Scaling
         numeric_cols = X_train_resampled.select_dtypes(
             include=["float64", "int64"]
         ).columns
@@ -341,58 +341,161 @@ class FeatureEngineering:
         # Save
         X_scaled_df = pd.DataFrame(X_train_scaled, columns=numeric_cols)
         y_resampled_df = pd.DataFrame(y_train_resampled, columns=["Class"])
-        merged_df = pd.concat([X_scaled_df, y_resampled_df], axis=1)
+        fraud_merged_df = pd.concat([X_scaled_df, y_resampled_df], axis=1)
 
-        save_path = os.path.join(self.processed_dir, "Train_Resampled_Scaled.csv")
-        merged_df.to_csv(save_path, index=False)
+        save_path = os.path.join(self.processed_dir, "Train_Resampled_Scaled_Fraud.csv")
+        fraud_merged_df.to_csv(save_path, index=False)
         print(
-            f"Resampled and scaled training data 'Train_Resampled_Scaled'saved to \
-                {self.safe_relpath(save_path)}.\n"
+            f"Resampled and scaled training data 'Train_Resampled_Scaled_Fraud' saved \
+                to {self.safe_relpath(save_path)}.\n"
         )
 
         # Class Distribution Bar Plot After Class Balancing
-        if "Class" in merged_df.columns:
+        if "Class" in fraud_merged_df.columns:
             print("Class Distribution Bar Plot After Class Balancing...\n")
             plt.figure(figsize=(10, 5))
-            sns.countplot(data=merged_df, x="Class", hue="Class", palette="Set1")
-            plt.title("Class Distribution after SMOTE")
+            sns.countplot(data=fraud_merged_df, x="Class", hue="Class", palette="Set1")
+            plt.title("Class Distribution after SMOTE (Fraud)")
             plt.xlabel("Class (0 = Legitimate, 1 = Fraud)")
             plt.ylabel("Transaction Count")
             plt.grid()
             plt.tight_layout()
 
             if self.plot_dir:
-                plot_path = os.path.join(self.plot_dir, "new_class_count.png")
+                plot_path = os.path.join(self.plot_dir, "fraud_new_class_count.png")
                 plt.savefig(plot_path)
                 print(f"Plot saved to {self.safe_relpath(plot_path)}")
 
             plt.show()
             plt.close()
 
-        pd.DataFrame(X_test_scaled, columns=numeric_cols).to_csv(
-            "X_test_scaled.csv", index=False
-        )
-        pd.DataFrame(y_test).to_csv("y_test.csv", index=False)
-
         # Save scaled test set for model evaluation
+        # Centralized paths for test set
+        test_x_path = os.path.join(self.processed_dir, "X_test_scaled_fraud.csv")
+        test_y_path = os.path.join(self.processed_dir, "y_test_fraud.csv")
+
         pd.DataFrame(X_test_scaled, columns=numeric_cols).to_csv(
-            "X_test_scaled.csv", index=False
+            test_x_path, index=False
         )
-        pd.DataFrame(y_test).to_csv("y_test.csv", index=False)
+        pd.DataFrame(y_test).to_csv(test_y_path, index=False)
 
         # Save raw (unscaled) for SHAP interpretation
         pd.DataFrame(X_train_resampled, columns=X_train_imputed.columns).to_csv(
-            "X_train_resampled_raw.csv", index=False
+            "X_train_resampled_raw_fraud.csv", index=False
         )
 
-        return merged_df
+        return fraud_merged_df
+
+    def credit_data_transformation(self):
+        """
+        Perform data transformation for model training.
+
+        This method prepares the data for machine learning
+            by performing the following steps:
+        1. Splits the data into features (X) and target (y).
+        2. Applies one-hot encoding to specified categorical columns.
+        3. Splits the data into training and testing sets using stratified sampling.
+        4. Handles class imbalance in the training data using SMOTE.
+        5. Scales the numeric features using StandardScaler.
+        6. Saves the resampled and scaled training data,
+            and the scaled testing data and their labels to CSV files.
+
+        Returns:
+            None. The processed dataframes are saved to files.
+        """
+        # Split features and target
+        X = self.credit.drop("Class", axis=1)
+        y = self.credit["Class"]
+
+        # Train-test split
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, stratify=y, test_size=0.2, random_state=42
+        )
+
+        # Handle missing values with median imputation
+        imputer = SimpleImputer(strategy="median")
+        X_train_imputed = pd.DataFrame(
+            imputer.fit_transform(X_train), columns=X_train.columns
+        )
+        X_test_imputed = pd.DataFrame(imputer.transform(X_test), columns=X_test.columns)
+
+        # Class imbalance handling
+        print(f"Original Fraud Ratio: {y_train.mean():.2%}")
+        smote = SMOTE(random_state=42)
+        X_train_resampled, y_train_resampled = smote.fit_resample(
+            X_train_imputed, y_train
+        )
+
+        print(f"\nShape before SMOTE: {X_train.shape}")
+        print(f"Shape after SMOTE: {X_train_resampled.shape}")
+        print(f"\nResampled Fraud Ratio: {y_train_resampled.mean():.2%}")
+
+        # Normalisation and scaling
+        numeric_cols = X_train_resampled.select_dtypes(
+            include=["float64", "int64"]
+        ).columns
+        scaler = StandardScaler()
+        X_train_scaled = scaler.fit_transform(X_train_resampled[numeric_cols])
+        X_test_scaled = scaler.transform(X_test_imputed[numeric_cols])
+
+        # Save
+        X_scaled_df = pd.DataFrame(X_train_scaled, columns=numeric_cols)
+        y_resampled_df = pd.DataFrame(y_train_resampled, columns=["Class"])
+        credit_merged_df = pd.concat([X_scaled_df, y_resampled_df], axis=1)
+
+        save_path = os.path.join(
+            self.processed_dir, "Credit_Train_Resampled_Scaled_Credit.csv"
+        )
+        credit_merged_df.to_csv(save_path, index=False)
+        print(
+            f"Resampled and scaled training data 'Train_Resampled_Scaled_Credit'saved \
+                to {self.safe_relpath(save_path)}.\n"
+        )
+
+        # Class Distribution Bar Plot After Class Balancing
+        if "Class" in credit_merged_df.columns:
+            print("Class Distribution Bar Plot After Class Balancing...\n")
+            plt.figure(figsize=(10, 5))
+            sns.countplot(data=credit_merged_df, x="Class", hue="Class", palette="Set1")
+            plt.title("Class Distribution after SMOTE (Credit)")
+            plt.xlabel("Class (0 = Legitimate, 1 = Fraud)")
+            plt.ylabel("Transaction Count")
+            plt.grid()
+            plt.tight_layout()
+
+            if self.plot_dir:
+                plot_path = os.path.join(self.plot_dir, "credit_new_class_count.png")
+                plt.savefig(plot_path)
+                print(f"Plot saved to {self.safe_relpath(plot_path)}")
+
+            plt.show()
+            plt.close()
+
+        # Save scaled test set for model evaluation
+        # Centralised paths for test set
+        test_x_path = os.path.join(self.processed_dir, "X_test_scaled_credit.csv")
+        test_y_path = os.path.join(self.processed_dir, "y_test_credit.csv")
+
+        pd.DataFrame(X_test_scaled, columns=numeric_cols).to_csv(
+            test_x_path, index=False
+        )
+        pd.DataFrame(y_test).to_csv(test_y_path, index=False)
+
+        # Save raw (unscaled) for SHAP interpretation
+        pd.DataFrame(X_train_resampled, columns=X_train_imputed.columns).to_csv(
+            "X_train_resampled_raw_credit.csv", index=False
+        )
+
+        return credit_merged_df
 
     def run_all(self):
         """
         Execute the full feature engineering and data transformation pipeline.
 
         This method calls `transaction_frequency_Velocity` to generate features
-        and then `data_transformation` to prepare the data for model training.
+        and then `fraud_data_transformation` and `credit_data_transformation`
+        to prepare the data for model training.
         """
         self.transaction_frequency_Velocity()
-        self.data_transformation()
+        self.fraud_data_transformation()
+        self.credit_data_transformation()
