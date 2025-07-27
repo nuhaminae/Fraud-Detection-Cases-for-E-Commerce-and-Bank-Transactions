@@ -59,12 +59,12 @@ fraud_detection_project/
 ├── notebooks/                         # Exploratory Data Analysis and Feature Engineering notebooks
 │   ├── 01_eda.ipynb                   
 │   ├── 02_feature_engineering.ipynb
-│   ├── 03_modelling.ipynb              (next step)
+│   ├── 03_modelling.ipynb              
 │   └── 04_model_explainability.ipynb   (next step)
 ├── scripts/                           # Core scripts
 │   ├── _01_data_preprocessing.py
 │   ├── _02_feature_engineering.py
-│   ├── _03_train_model.py              (next step)
+│   ├── _03_train_model.py              
 │   └── _04_explain_model.py            (next step)
 ├── tests/
 ├── .dvcignore
@@ -115,12 +115,12 @@ dvc pull
 
 This project uses pre-commit hooks to automatically format and lint `.py` and `.ipynb` files using:
 
-|Tool	      | Purpose                                       |
+|Tool	    | Purpose                                       |
 |:---------:|-----------------------------------------------|
 | Black	    |Enforces consistent code formatting            | 
 | isort	    |Sorts and organises import statements          |
-| Flake8		|Lints Python code for style issues             |
-| nbQA		  |Runs Black, isort, and Flake8 inside notebooks |
+| Flake8	|Lints Python code for style issues             |
+| nbQA	    |Runs Black, isort, and Flake8 inside notebooks |
 
 ``` bash
 # Format and lint all scripts and notebooks
@@ -129,15 +129,44 @@ pre-commit run --all-files
 ## EDA Visual Insights
 The following plots illustrate key moments in the pipeline, revealing patterns that informed preprocessing and modelling decisions:
 * Class Imbalance Before Resampling
-![Class Imbalance](insights/eda/FraudData_Class_count.png)
+![Credit Data Class Imbalance](insights/eda/FraudData_Class_count.png)
 * Resampled Class Balance Using SMOTE
-![Class Balance](insights/feature_engineering/new_class_count.png)
+![Credit Data Class Balance](insights/feature_engineering/fraud_new_class_count.png)
+* Class Imbalance Before Resampling
+![Credit Data Class Imbalance](insights/eda/CreditCard_Class_count.png)
+* Resampled Class Balance Using SMOTE
+![Credit Data Class Balance](insights/feature_engineering/credit_new_class_count.png)
 * Most Active Countries Based on IP Mapping
 ![Top 10 Countries](insights/eda/IPAddressMap_Top10Country_count.png)
 * Top 10 Countries by Fraud Rate
 ![Top 10 Countries by Fraud](insights/eda/Top10_Fraud_Countries.png)
 
 These visuals bring clarity to fraud distribution, justify SMOTE-based resampling, and highlight the role of geolocation enrichment in fraud detection.
+
+## Credit Dataset Observations
+|Model              |F1-Score   |	AUC-PR	|False Positives    |False Negatives    |
+|:-----------------:|:---------:|:---------:|:-----------------:|:-----------------:|
+|Logistic Regression|0.277      |0.860	    |421                |12                 |
+|Random Forest	    |0.957      |0.957	    |2                  |6                  |
+|XGBoost            |0.923      |0.899	    |3                  |11                 |
+- Logistic Regression is very limited on fraud recall (12 missed frauds, 421 false alarms). That hurts customer experience.
+- **Random Forest** dominates almost perfect separation, minimal confusion, and the highest AUC-PR.
+- XGBoost is strong too, but slightly behind RF here.
+![Best Model for Credit Dataset](insights/modelling/Credit_cm_Random_Forest.png)
+![Best Model for Credit Dataset](insights/modelling/Credit_pr_Random_Forest.png)
+
+## Fraud Dataset Observations
+|Model              |F1-Score   |	AUC-PR	|False Positives    |False Negatives    |
+|:-----------------:|:---------:|:---------:|:-----------------:|:-----------------:|
+|Logistic Regression|0.615      |0.653      |1,276              |1,006              |
+|Random Forest	    |0.674      |0.700	    |284	            |1,247              |
+|XGBoost            |0.689      |0.710	    |47	                |1,318              |
+- All models face difficulty separating fraud from legitimate activity, this reflects the complexity of transaction behavior.
+- Logistic Regression struggles most with precision, lots of false positives.
+- Random Forest balances both reasonably but still misses over 1,200 frauds.
+- **XGBoost** shines with the fewest false positives but trades off slightly higher false negatives.
+![Best Model for Fraud Dataset](insights/modelling/Fraud_cm_XG_Boost.png)
+![Best Model for Fraud Dataset](insights/modelling/Fraud_pr_XG_Boost.png)
 
 ---
 ## Contribution
