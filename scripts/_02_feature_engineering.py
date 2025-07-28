@@ -176,20 +176,6 @@ class FeatureEngineering:
         self.fraud["Missing_Geo"] = self.fraud["Country"].apply(
             lambda x: 1 if x == "Unknown" else 0
         )
-        self.fraud["MissingGeo_x_Velocity"] = (
-            self.fraud["Missing_Geo"] * self.fraud["Velocity"]
-        )
-        self.fraud["Velocity_zscore"] = StandardScaler().fit_transform(
-            self.fraud[["Velocity"]]
-        )
-        self.fraud["Velocity_zscore"] = self.fraud["Velocity_zscore"].clip(-5, 5)
-
-        self.fraud["MissingGeo_x_Velocity_z"] = (
-            self.fraud["Missing_Geo"] * self.fraud["Velocity_zscore"]
-        )
-        self.fraud["MissingGeo_HighVelocity_Flag"] = (
-            (self.fraud["Missing_Geo"] == 1) & (self.fraud["Velocity_zscore"] > 2)
-        ).astype(int)
 
         # Visualise Transaction Velocity Distribution
         plt.figure(figsize=(10, 5))
