@@ -1,6 +1,7 @@
 # _03_train_model.py
 import os
 
+import joblib
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
@@ -29,6 +30,7 @@ class TrainModel:
         fraud_path,
         test_x_f_path,
         test_y_f_path,
+        model_dir,
         plot_dir=None,
         verbose=True,
     ):
@@ -51,15 +53,20 @@ class TrainModel:
             "Fraud": (fraud_path, test_x_f_path, test_y_f_path),
         }
         self.plot_dir = plot_dir
+        self.model_dir = model_dir
         self.verbose = verbose
 
         # Create output directory if it does not exist
         if not os.path.exists(self.plot_dir):
             os.makedirs(self.plot_dir)
+        if not os.path.exists(self.model_dir):
+            os.makedirs(self.model_dir)
 
         self.datasets = {}
         self.models = {}
         self.test_sets = {}
+        self.best_models = {}
+
         print("TrainModel class initialised\n")
         self.load_and_process()
         self.model_selection()
@@ -248,7 +255,23 @@ class TrainModel:
         for label, (X_train, y_train, X_test, y_test) in self.datasets.items():
             print(f"\n--- {label} Dataset ---")
             self.test_sets[label] = (X_test, y_test)
+            best_score = -1
+            best_model = None
+            best_model_name = None
             for name, model in self.models.items():
                 print(f"\nTraining {name} on {label}...")
                 model.fit(X_train, y_train)
-                self.evaluate_model(model, X_test, y_test, label, name)
+                f1, auc_pr, cm = self.evaluate_model(model, X_test, y_test, label, name)
+
+                if f1 > best_score:
+                    best_score = f1
+                    best_model = model
+                    best_model_name = name
+
+            # Save best model
+            if best_model:
+                filename = f"{label}_best_model_{best_model_name.replace(' ', '_')}.pkl"
+                filepath = os.path.join(self.model_dir, filename)
+                joblib.dump(best_model, filepath)
+                print(f"Best model for {label} saved to {self.safe_relpath(filepath)}")
+                self.best_models[label] = best_model
