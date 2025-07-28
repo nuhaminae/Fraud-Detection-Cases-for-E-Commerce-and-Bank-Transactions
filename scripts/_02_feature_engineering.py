@@ -172,6 +172,25 @@ class FeatureEngineering:
         # Assign enriched data back
         self.fraud = self.df_sorted.copy()
 
+        # Add Missing_Geo binary column
+        self.fraud["Missing_Geo"] = self.fraud["Country"].apply(
+            lambda x: 1 if x == "Unknown" else 0
+        )
+        self.fraud["MissingGeo_x_Velocity"] = (
+            self.fraud["Missing_Geo"] * self.fraud["Velocity"]
+        )
+        self.fraud["Velocity_zscore"] = StandardScaler().fit_transform(
+            self.fraud[["Velocity"]]
+        )
+        self.fraud["Velocity_zscore"] = self.fraud["Velocity_zscore"].clip(-5, 5)
+
+        self.fraud["MissingGeo_x_Velocity_z"] = (
+            self.fraud["Missing_Geo"] * self.fraud["Velocity_zscore"]
+        )
+        self.fraud["MissingGeo_HighVelocity_Flag"] = (
+            (self.fraud["Missing_Geo"] == 1) & (self.fraud["Velocity_zscore"] > 2)
+        ).astype(int)
+
         # Visualise Transaction Velocity Distribution
         plt.figure(figsize=(10, 5))
         sns.histplot(
@@ -370,7 +389,7 @@ class FeatureEngineering:
             plt.close()
 
         # Save scaled test set for model evaluation
-        # Centralized paths for test set
+        # Centralised paths for test set
         test_x_path = os.path.join(self.processed_dir, "X_test_scaled_fraud.csv")
         test_y_path = os.path.join(self.processed_dir, "y_test_fraud.csv")
 
