@@ -6,7 +6,22 @@ import shap
 
 
 class ModelExplainability:
+    """
+    A class to perform model explainability using SHAP
+    for Random Forest and XGBoost models.
+    """
+
     def __init__(self, test_x_c_path, test_x_f_path, rf_model, xgb_model, plot_dir):
+        """
+        Initialises the ModelExplainability class.
+
+        Args:
+            test_x_c_path (str): Path to the test data CSV for the Random Forest model.
+            test_x_f_path (str): Path to the test data CSV for the XGBoost model.
+            rf_model: Trained Random Forest model.
+            xgb_model: Trained XGBoost model.
+            plot_dir (str): Directory to save the SHAP plots.
+        """
 
         self.test_x_c_path = test_x_c_path
         self.test_x_f_path = test_x_f_path
@@ -37,6 +52,15 @@ class ModelExplainability:
             return path  # Fallback to absolute path if on different drives
 
     def random_forest_SHAP(self, i=0):
+        """
+        Generates and displays SHAP explanations for the Random Forest model.
+
+        Args:
+            i (int, optional): Index of the sample to explain locally. Defaults to 0.
+
+        Returns:
+            shap.force_plot: A force plot object for the local explanation.
+        """
         test_x_c = pd.read_csv(self.test_x_c_path)
         print("Test shape:", test_x_c.shape)
 
@@ -61,6 +85,15 @@ class ModelExplainability:
         )
 
     def xgboost_SHAP(self, i=0):
+        """
+        Generates and displays SHAP explanations for the XGBoost model.
+
+        Args:
+            i (int, optional): Index of the sample to explain locally. Defaults to 0.
+
+        Returns:
+            shap.force_plot: A force plot object for the local explanation.
+        """
         test_x_f = pd.read_csv(self.test_x_f_path)
         print("Test shape:", test_x_f.shape)
 
