@@ -4,7 +4,6 @@
 ![Flake8 Lint](https://img.shields.io/badge/lint-flake8-yellow.svg)
 [![CI](https://github.com/nuhaminae/Fraud-Detection-Cases-for-E-Commerce-and-Bank-Transactions/actions/workflows/CI.yml/badge.svg)](https://github.com/nuhaminae/Fraud-Detection-Cases-for-E-Commerce-and-Bank-Transactions/actions/workflows/CI.yml)
 
-
 ![Explainability](https://img.shields.io/badge/XAI-SHAP-lightgrey)
 ![Version Control](https://img.shields.io/badge/Artifacts-DVC-brightgreen)
 
@@ -140,7 +139,9 @@ Interpret model predictions using SHAP:
 ```bash
 python scripts/_04_explain_model.py
 ```
-This script generates summary plots. Resulting insights are stored under:
+This script generates both global insights (summary plots) and local decision breakdowns (force plots). Resulting visualizations are stored under:
+- `insights/explainer/force_rf.png`
+- `insights/explainer/force_xgb.png`
 - `insights/explainer/summary_rf.png`
 - `insights/explainer/summary_xgb.png`
 
@@ -217,10 +218,16 @@ These visuals bring clarity to fraud distribution, justify SMOTE-based resamplin
 ## SHAP Explainability Insights
 To understand what drives fraud prediction, SHAP plots reveal model decisions both globally and per transaction.
 * Credit Dataset – Random Forest Model
-![SHAP Credit](insights/explainer/summary_rf.png)
+SHAP Summary Plot 
+![SHAP Summary Credit](insights/explainer/summary_rf.png)
+SHAP Force Plot (example fraud case)
+![SHAP Force Credit](insights/explainer/force_rf.png)
 
 * Fraud Dataset – XGBoost Model
-![SHAP Fraud](insights/explainer/summary_xgb.png)
+SHAP Summary Plot 
+![SHAP Summary Fraud](insights/explainer/summary_c.png)
+SHAP Force Plot (example fraud case)
+![SHAP Force Fraud](insights/explainer/force_xgb.png)
 
 These plots help identify which features most influence predictions. For example, device transation count, velocity, hour of day, and time since signup are frequent drivers in flagged transactions.
 
