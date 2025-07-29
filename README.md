@@ -225,7 +225,7 @@ SHAP Force Plot (example fraud case)
 
 * Fraud Dataset – XGBoost Model
 SHAP Summary Plot 
-![SHAP Summary Fraud](insights/explainer/summary_c.png)
+![SHAP Summary Fraud](insights/explainer/summary_xgb.png)
 SHAP Force Plot (example fraud case)
 ![SHAP Force Fraud](insights/explainer/force_xgb.png)
 
