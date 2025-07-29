@@ -1,0 +1,5 @@
+outs:
+- md5: cf5a432d075468930ff29e262cd90b81
+  size: 6889689
+  hash: md5
+  path: Credit_best_model_Random_Forest.pkl

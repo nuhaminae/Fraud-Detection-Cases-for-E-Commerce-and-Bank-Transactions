@@ -1,0 +1,5 @@
+outs:
+- md5: 79c4cceddaf7753d537f170342388a57
+  size: 314435
+  hash: md5
+  path: Fraud_best_model_XG_Boost.pkl
