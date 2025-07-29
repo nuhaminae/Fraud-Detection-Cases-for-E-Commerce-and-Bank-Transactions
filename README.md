@@ -4,6 +4,11 @@
 ![Flake8 Lint](https://img.shields.io/badge/lint-flake8-yellow.svg)
 [![CI](https://github.com/nuhaminae/Fraud-Detection-Cases-for-E-Commerce-and-Bank-Transactions/actions/workflows/CI.yml/badge.svg)](https://github.com/nuhaminae/Fraud-Detection-Cases-for-E-Commerce-and-Bank-Transactions/actions/workflows/CI.yml)
 
+
+![Explainability](https://img.shields.io/badge/XAI-SHAP-lightgrey)
+![Version Control](https://img.shields.io/badge/Artifacts-DVC-brightgreen)
+
+
 ## Overview
 This project tackles the detection of fraudulent activities across e-commerce and banking transactions using machine learning and geolocation intelligence. It emphasises strong data preprocessing pipelines, class imbalance handling, and interpretable modelling to balance security and customer experience.
 
@@ -14,7 +19,7 @@ This project tackles the detection of fraudulent activities across e-commerce an
 - Class imbalance handling using SMOTE with strict datatype safeguards.
 - Scaled, reproducible train/test splits for both bank and e-commerce transactions.
 - CI pipelines and pre-commit checks for code consistency and quality.
-- SHAP-based model explainability integrated for transparency. (next step)
+- SHAP-based model explainability integrated for transparency. 
 
 ---
 ## Table of Contents
@@ -49,23 +54,23 @@ It draws on business challenges faced by Adey Innovations Inc., where detection 
 ---
 ## Project Structure
 ```
-fraud_detection_project/
-├── dvc/                               # Data Version Control
+├── .dvc/                              # Data Version Control
 ├── .github/                           # CI workflows
 ├── data/
 │   ├── raw/                           # Original datasets
 │   └── processed/                     # Cleaned and transformed datasets
 ├── insights/                          # Plots and charts for reporting
-├── notebooks/                         # Exploratory Data Analysis and Feature Engineering notebooks
+├── models/  
+├── notebooks/                         # Notebooks
 │   ├── 01_eda.ipynb                   
 │   ├── 02_feature_engineering.ipynb
 │   ├── 03_modelling.ipynb              
-│   └── 04_model_explainability.ipynb   (next step)
+│   └── 04_model_explainability.ipynb  
 ├── scripts/                           # Core scripts
 │   ├── _01_data_preprocessing.py
 │   ├── _02_feature_engineering.py
 │   ├── _03_train_model.py              
-│   └── _04_explain_model.py            (next step)
+│   └── _04_explain_model.py            
 ├── tests/                              
 ├── .dvcignore
 ├── .flake8
@@ -73,7 +78,6 @@ fraud_detection_project/
 ├── .pre-commit-config.yaml            # Pre-commit configuration
 ├── format.ps1                         # Formatting
 ├── pyproject.toml
-├── requirements.txt                   # Pip install fallback
 ├── README.md                          # Project overview and setup instructions
 └── requirements.txt                   # Pip install fallback
 ```
@@ -111,6 +115,44 @@ dvc pull
 
 ---
 ## Usage
+Once the environment is set up, you can execute the pipeline and inspect model outputs as follows:
+
+1. Preprocessing & Feature Engineering
+
+Run the core preprocessing and feature engineering scripts in order:
+```bash
+python scripts/_01_data_preprocessing.py
+python scripts/_02_feature_engineering.py
+```
+These scripts clean raw inputs, merge geolocation data, and generate velocity-based and time-derived features.
+
+2. Model Training
+
+Train and evaluate baseline and ensemble models:
+```bash
+python scripts/_03_train_model.py
+```
+This stage uses stratified splits, handles class imbalance via SMOTE, and evaluates models using AUC-PR, F1-score, and confusion matrices.
+
+3. Model Explainability via SHAP
+
+Interpret model predictions using SHAP:
+```bash
+python scripts/_04_explain_model.py
+```
+This script generates summary plots. Resulting insights are stored under:
+- `insights/explainer/summary_rf.png`
+- `insights/explainer/summary_xgb.png`
+
+### Explore with Notebooks
+Notebooks are provided for exploratory and iterative development:
+- `notebooks/01_eda.ipynb` — visual patterns in data
+- `notebooks/02_feature_engineering.ipynb` — build fraud indicators
+- `notebooks/03_modelling.ipynb` — train and test models interactively
+- `notebooks/04_model_explainability.ipynb` — interpret predictions using SHAP
+
+Open these with Jupyter or VSCode to navigate the workflow interactively.
+
 ### Code Quality
 
 This project uses pre-commit hooks to automatically format and lint `.py` and `.ipynb` files using:
@@ -126,8 +168,11 @@ This project uses pre-commit hooks to automatically format and lint `.py` and `.
 # Format and lint all scripts and notebooks
 pre-commit run --all-files
 ```
+
+---
 ## EDA Visual Insights
 The following plots illustrate key moments in the pipeline, revealing patterns that informed preprocessing and modelling decisions:
+
 * Class Imbalance Before Resampling
 ![Credit Data Class Imbalance](insights/eda/FraudData_Class_count.png)
 * Resampled Class Balance Using SMOTE
@@ -158,15 +203,26 @@ These visuals bring clarity to fraud distribution, justify SMOTE-based resamplin
 ## Fraud Dataset Observations
 |Model              |F1-Score   |	AUC-PR	|False Positives    |False Negatives    |
 |:-----------------:|:---------:|:---------:|:-----------------:|:-----------------:|
-|Logistic Regression|0.615      |0.653      |1,276              |1,006              |
-|Random Forest	    |0.674      |0.700	    |284	            |1,247              |
-|XGBoost            |0.689      |0.710	    |47	                |1,318              |
+|Logistic Regression|0.614      |0.653      |1,273              |1,011              |
+|Random Forest	    |0.675      |0.700	    |280	            |1,246              |
+|XGBoost            |0.700      |0.710	    |41	                |1,318              |
 - All models face difficulty separating fraud from legitimate activity, this reflects the complexity of transaction behavior.
 - Logistic Regression struggles most with precision, lots of false positives.
 - Random Forest balances both reasonably but still misses over 1,200 frauds.
 - **XGBoost** shines with the fewest false positives but trades off slightly higher false negatives.
 ![Best Model for Fraud Dataset](insights/modelling/Fraud_cm_XG_Boost.png)
 ![Best Model for Fraud Dataset](insights/modelling/Fraud_pr_XG_Boost.png)
+
+
+## SHAP Explainability Insights
+To understand what drives fraud prediction, SHAP plots reveal model decisions both globally and per transaction.
+* Credit Dataset – Random Forest Model
+![SHAP Credit](insights/explainer/summary_rf.png)
+
+* Fraud Dataset – XGBoost Model
+![SHAP Fraud](insights/explainer/summary_xgb.png)
+
+These plots help identify which features most influence predictions. For example, device transation count, velocity, hour of day, and time since signup are frequent drivers in flagged transactions.
 
 ---
 ## Contribution
@@ -180,8 +236,8 @@ Make sure to follow best practices for version control, testing, and documentati
 - Engineered temporal features like Hour_Of_Day, Day_Of_Week, Time_Since_Signup.
 - Advanced class imbalance correction using SMOTE post-encoding and datatype filtering.
 - Defensive coding practices like safe_relpath, clean feature selection, and testable pipelines.
-- Visual insights powered by SHAP, enhancing model explainability and business trust. (Next steps) 
+- Visual insights powered by SHAP, enhancing model explainability and business trust.
 
 ---
 ## Project Status
-Project is still underway. Checkout the commit history [here](https://github.com/nuhaminae/Fraud-Detection-Cases-for-E-Commerce-and-Bank-Transactions). 
+Final submission merged. Checkout the commit history [here](https://github.com/nuhaminae/Fraud-Detection-Cases-for-E-Commerce-and-Bank-Transactions). 
